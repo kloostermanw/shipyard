@@ -17,6 +17,7 @@ class SSHSettings(BaseModel):
 class GitHubSettings(BaseModel):
     token_env: str = "GITHUB_TOKEN"
     api_base: str = "https://api.github.com"
+    polling_interval: int = 2000  # milliseconds
 
 
 class GlobalSettings(BaseModel):

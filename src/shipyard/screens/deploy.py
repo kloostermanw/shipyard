@@ -6,6 +6,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
+from textual.timer import Timer
 from textual.widgets import Button, Footer, Header, ListView, ListItem, Label, Static
 
 from shipyard.deploy.deployer import DeployStatus
@@ -54,6 +55,7 @@ class DeployScreen(Screen):
         self._deploying = False
         self._env_ids: list[str] = []
         self._version_names: list[str] = []
+        self._workflow_timer: Timer | None = None
 
     def compose(self) -> ComposeResult:
         config = self.app.shipyard_config
@@ -81,6 +83,11 @@ class DeployScreen(Screen):
         self.query_one("#workflow-runs").display = False
         self._load_versions()
         self.run_worker(self._fetch_workflow_runs())
+        # Start polling for workflow run updates
+        interval_ms = self.app.shipyard_config.global_.github.polling_interval
+        self._workflow_timer = self.set_interval(
+            interval_ms / 1000, self._poll_workflow_runs
+        )
 
     def _load_versions(self) -> None:
         self.run_worker(self._fetch_versions(), exclusive=True)
@@ -110,6 +117,11 @@ class DeployScreen(Screen):
 
         self._version_names.append("develop")
         version_list.append(ListItem(Label("develop")))
+
+    def _poll_workflow_runs(self) -> None:
+        """Periodic callback to refresh workflow runs."""
+        if not self._deploying:
+            self.run_worker(self._fetch_workflow_runs())
 
     async def _fetch_workflow_runs(self) -> None:
         config = self.app.shipyard_config
@@ -187,6 +199,8 @@ class DeployScreen(Screen):
 
     def _start_deploy(self) -> None:
         self._deploying = True
+        if self._workflow_timer:
+            self._workflow_timer.stop()
         # Show progress, hide selection
         self.query_one("#workflow-runs").display = False
         self.query_one("#version-selection").display = False

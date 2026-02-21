@@ -33,6 +33,7 @@ global:
   github:
     token_env: "GITHUB_TOKEN"           # Name of env var holding GitHub token
     api_base: "https://api.github.com"  # GitHub API base URL (for GHE)
+    polling_interval: 2000              # Workflow status polling interval in ms
 ```
 
 All fields have sensible defaults. The entire `global` section is optional.
@@ -116,6 +117,7 @@ global:
     keepalive_interval: 30
   github:
     token_env: "GITHUB_TOKEN"
+    polling_interval: 2000
 
 servers:
   prod-web-01:
@@ -217,6 +219,7 @@ class SSHSettings(BaseModel):
 class GitHubSettings(BaseModel):
     token_env: str = "GITHUB_TOKEN"
     api_base: str = "https://api.github.com"
+    polling_interval: int = 2000  # milliseconds
 
 class GlobalSettings(BaseModel):
     ssh: SSHSettings = SSHSettings()

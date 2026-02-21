@@ -2,7 +2,7 @@
 
 ## 1. Dashboard Screen
 
-The home screen showing all applications at a glance. Select a row and press `enter` to open.
+The home screen showing all applications at a glance with their **latest GitHub version** and **deployed version per environment**. Environment columns are built dynamically from the union of all environment names across all apps, sorted by deploy-pipeline priority (`prd` → `uat` → `staging` → `dev` → alphabetical). Select a row and press `enter` to open.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -11,26 +11,27 @@ The home screen showing all applications at a glance. Select a row and press `en
 │                                                                             │
 │  Applications                                                               │
 │                                                                             │
-│  ┌───────────────────────┬──────────────────────┬──────────────────────────┐│
-│  │ Application           │ Environments         │ GitHub                   ││
-│  ├───────────────────────┼──────────────────────┼──────────────────────────┤│
-│  │▶Genotool              │ prd, uat, staging    │ myorg/genotool           ││
-│  │ Frontend App          │ prd, staging         │ myorg/frontend           ││
-│  │ API Service           │ prd, uat, staging    │ myorg/api-service        ││
-│  │ Admin Panel           │ prd                  │ myorg/admin-panel        ││
-│  │                       │                      │                          ││
-│  │                       │                      │                          ││
-│  │                       │                      │                          ││
-│  │                       │                      │                          ││
-│  └───────────────────────┴──────────────────────┴──────────────────────────┘│
+│  ┌──────────────┬────────┬────────┬────────┬─────────┐                      │
+│  │ Application  │ Latest │ PRD    │ UAT    │ STAGING │                      │
+│  ├──────────────┼────────┼────────┼────────┼─────────┤                      │
+│  │▶Genotool     │ v3.4   │ v3.2   │ v3.3   │ v3.4    │                      │
+│  │ Frontend App │ v2.1   │ v2.0   │ -      │ v2.1    │                      │
+│  │ API Service  │ v5.0   │ v4.9   │ v5.0   │ v5.0    │                      │
+│  │ Admin Panel  │ v1.3   │ v1.3   │ -      │ -       │                      │
+│  │              │        │        │        │         │                      │
+│  └──────────────┴────────┴────────┴────────┴─────────┘                      │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ r Refresh  s Servers  q Quit                     enter Open (on table row)  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+- **Latest** column shows the latest GitHub release/tag, fetched asynchronously in parallel. Displays `...` while loading, then the version or `-` if unavailable.
+- **Environment columns** (PRD, UAT, STAGING, etc.) show the deployed Docker image tag extracted from the first container in each environment's container cache. Displays `-` until container data is available.
+- Both columns update reactively: GitHub versions resolve progressively via `update_cell()`, and environment versions refresh when the container cache updates.
+
 Key bindings (all `priority=True`):
-- `r` — Refresh the application list
+- `r` — Re-populate the table, trigger a container cache refresh, and re-fetch GitHub versions
 - `s` — Open Servers screen
 - `q` — Quit the application
 - `enter` — Open the selected application (handled via `on_data_table_row_selected`)
@@ -75,7 +76,7 @@ Key bindings (all `priority=True`):
 
 ## 3. Deploy Screen - Version Selection
 
-Select an environment (left) and a version from GitHub tags/releases (right). Versions are fetched asynchronously on mount.
+Select an environment (left) and a version from GitHub tags/releases (right). Versions are fetched asynchronously on mount. If there are active GitHub Actions workflow runs, they are displayed above the selection lists and auto-refresh at the configured `polling_interval` (default 2s).
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
