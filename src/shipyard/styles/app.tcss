@@ -1,0 +1,218 @@
+/* Release TUI - Global Styles */
+
+Screen {
+    background: $surface;
+}
+
+/* Header */
+#app-header {
+    dock: top;
+    height: 3;
+    background: $primary;
+    color: $text;
+    content-align: center middle;
+    text-style: bold;
+    padding: 0 2;
+}
+
+#app-title {
+    width: 1fr;
+    text-style: bold;
+}
+
+/* Dashboard */
+#dashboard-container {
+    padding: 1 2;
+}
+
+#app-table {
+    height: 1fr;
+    margin: 1 0;
+}
+
+/* Application screen */
+#application-container {
+    padding: 1 2;
+}
+
+.app-header-info {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.app-header-row {
+    height: auto;
+    width: 100%;
+}
+
+.app-name {
+    text-style: bold;
+    width: 1fr;
+}
+
+.app-description {
+    color: $text-muted;
+    width: auto;
+}
+
+.app-github {
+    color: $text-muted;
+    width: 1fr;
+}
+
+.app-latest-version {
+    color: $text-muted;
+    width: auto;
+}
+
+/* Environment panel (inside tabs) */
+EnvironmentPanel {
+    height: auto;
+    min-height: 10;
+    padding: 1;
+}
+
+.env-server {
+    color: $text-muted;
+    margin-bottom: 0;
+}
+
+.env-path {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+/* Deploy screen */
+#deploy-container {
+    padding: 1 2;
+}
+
+#deploy-title {
+    text-style: bold;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#workflow-runs {
+    height: auto;
+    margin-bottom: 1;
+    padding: 0 1;
+    border: solid $accent;
+    color: $text-muted;
+}
+
+#version-selection {
+    height: 1fr;
+}
+
+#env-list {
+    width: 25;
+    height: 100%;
+    border: solid $primary;
+    margin-right: 1;
+}
+
+#version-list {
+    width: 1fr;
+    height: 100%;
+    border: solid $primary;
+}
+
+/* Deploy progress */
+DeployProgress {
+    height: 1fr;
+    width: 100%;
+}
+
+#deploy-status {
+    height: auto;
+    padding: 0 0 1 0;
+    text-style: bold;
+}
+
+#deploy-log {
+    height: 1fr;
+    border: solid $primary;
+}
+
+/* Servers screen */
+#servers-container {
+    padding: 1 2;
+}
+
+#servers-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#servers-table {
+    height: 1fr;
+}
+
+/* Log viewer screen */
+#logs-container {
+    padding: 1 2;
+}
+
+#logs-header {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#logs-title {
+    text-style: bold;
+    width: 1fr;
+}
+
+#logs-follow-indicator {
+    width: auto;
+    color: $success;
+}
+
+#logs-output {
+    height: 1fr;
+    border: solid $primary;
+}
+
+/* Confirm modal */
+DeployConfirmModal {
+    align: center middle;
+}
+
+#confirm-dialog {
+    width: 50;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#confirm-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+.confirm-detail {
+    height: auto;
+    margin: 0 1;
+}
+
+#confirm-buttons {
+    margin-top: 1;
+    height: auto;
+    align: center middle;
+}
+
+#confirm-buttons Button {
+    margin: 0 1;
+}
+
+.success {
+    color: $success;
+}
+
+.error {
+    color: $error;
+}

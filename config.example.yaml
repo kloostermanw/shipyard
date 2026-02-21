@@ -1,0 +1,98 @@
+# shipyard.yaml - Shipyard TUI Configuration
+#
+# This file defines your servers, applications, and their environments.
+# See doc/configuration.md for the full schema reference.
+
+global:
+  ssh:
+    default_user: "deploy"
+    key_path: "~/.ssh/id_ed25519"
+    connect_timeout: 10
+    keepalive_interval: 30
+  github:
+    token_env: "GITHUB_TOKEN"           # env var name holding your GitHub token
+
+servers:
+  prod-web-01:
+    hostname: "10.0.1.10"
+    port: 22
+    user: "deploy"
+    key_path: "~/.ssh/prod_key"
+    description: "Production web server 1"
+
+  prod-web-02:
+    hostname: "10.0.1.11"
+    port: 22
+    user: "deploy"
+    key_path: "~/.ssh/prod_key"
+    description: "Production web server 2"
+
+  staging-01:
+    hostname: "10.0.2.10"
+    port: 22
+    description: "Staging server"
+
+  uat-01:
+    hostname: "10.0.3.10"
+    port: 2222
+    description: "UAT server"
+
+applications:
+  frontend:
+    name: "Frontend App"
+    description: "Next.js frontend application"
+    github:
+      repo: "myorg/frontend"
+      track: "releases"
+    environments:
+      prd:
+        server: "prod-web-01"
+        path: "/opt/apps/frontend"
+        containers:
+          - "frontend-prd-web"
+          - "frontend-prd-nginx"
+      staging:
+        server: "staging-01"
+        path: "/opt/apps/frontend"
+        containers:
+          - "frontend-staging-web"
+          - "frontend-staging-nginx"
+
+  api-service:
+    name: "API Service"
+    description: "FastAPI backend with Celery worker"
+    github:
+      repo: "myorg/api-service"
+      track: "releases"
+    environments:
+      prd:
+        server: "prod-web-01"
+        path: "/opt/apps/api-service"
+        containers:
+          - "api-prd-web"
+          - "api-prd-worker"
+      uat:
+        server: "uat-01"
+        path: "/opt/apps/api-service"
+        containers:
+          - "api-uat-web"
+          - "api-uat-worker"
+      staging:
+        server: "staging-01"
+        path: "/opt/apps/api-service"
+        containers:
+          - "api-staging-web"
+          - "api-staging-worker"
+
+  admin-panel:
+    name: "Admin Panel"
+    description: "Internal admin dashboard"
+    github:
+      repo: "myorg/admin-panel"
+      track: "tags"
+    environments:
+      prd:
+        server: "prod-web-02"
+        path: "/opt/apps/admin-panel"
+        containers:
+          - "admin-panel"

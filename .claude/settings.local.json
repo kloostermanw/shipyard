@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:textual.textualize.io)",
+      "WebFetch(domain:realpython.com)",
+      "WebFetch(domain:pythoneo.com)",
+      "WebFetch(domain:elegantnetwork.github.io)",
+      "WebFetch(domain:docker-py.readthedocs.io)",
+      "Bash(pip3 show:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pip install:*)",
+      "Bash(curl:*)",
+      "Bash(sh)",
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
+      "Bash(uv venv:*)",
+      "Bash(uv pip install:*)",
+      "Bash($HOME/.local/bin/uv venv:*)",
+      "Bash($HOME/.local/bin/uv pip install:*)",
+      "Bash(/Users/wiebe/.local/bin/uv venv:*)",
+      "Bash(/Users/wiebe/.local/bin/uv pip install:*)",
+      "Bash(/Users/wiebe/repos/release/.venv/bin/pytest:*)",
+      "Bash(/Users/wiebe/repos/release/.venv/bin/python:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(python3:*)",
+      "Bash(/Users/wiebe/repos/release/src/release/styles/app.tcss:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(ls:*)",
+      "Bash(.venv/bin/pytest:*)",
+      "WebFetch(domain:docs.github.com)",
+      "Bash(test:*)",
+      "Bash(find:*)",
+      "Bash(git mv:*)",
+      "Bash(.venv/bin/shipyard:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

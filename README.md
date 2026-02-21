@@ -25,6 +25,14 @@ uv pip install -e ".[dev]"
 # Or using pip
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
+
+# Or my way
+mkdir ~/venvs
+python3 -m venv ~/venvs/shipyard
+cd ~/venvs/shipyard
+source bin/activate
+cd <root of this project>
+uv pip install -e ".[dev]"
 ```
 
 ## Usage
