@@ -34,7 +34,9 @@
       "Bash(git mv:*)",
       "Bash(.venv/bin/shipyard:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(uv run:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
