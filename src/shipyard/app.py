@@ -6,10 +6,8 @@ import argparse
 import asyncio
 import json
 import sys
-from pathlib import Path
 
 from textual.app import App
-from textual.message import Message
 
 from shipyard.config.manager import ConfigError, load_config
 from shipyard.config.schema import ShipyardConfig
@@ -24,9 +22,6 @@ class ShipyardApp(App):
     TITLE = "Shipyard - Docker Deployment Manager"
     CSS_PATH = "styles/app.tcss"
 
-    class ContainerCacheUpdated(Message):
-        """Posted when the shared container status cache has been refreshed."""
-
     def __init__(self, config: ShipyardConfig) -> None:
         super().__init__()
         self.shipyard_config = config
@@ -34,6 +29,7 @@ class ShipyardApp(App):
         self.github_client = GitHubClient(config.global_.github)
         self.deployer = Deployer(self.ssh_pool)
         self.container_cache: dict[str, dict[str, list[dict[str, str]]]] = {}
+        self.server_container_cache: dict[str, list[dict[str, str]]] = {}
 
     def on_mount(self) -> None:
         from shipyard.screens.dashboard import DashboardScreen
@@ -51,53 +47,69 @@ class ShipyardApp(App):
             self._fetch_all_container_status(), exclusive=True, group="container_cache"
         )
 
+    def _update_fetch_bar(self, completed: int, total: int) -> None:
+        """Push progress to the FetchStatusBar on the active screen."""
+        from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
+        try:
+            bar = self.screen.query_one(FetchStatusBar)
+            bar.show_progress(completed, total)
+        except Exception:
+            pass
+
     async def _fetch_all_container_status(self) -> None:
-        """Fetch container status for every app/env and populate the cache."""
+        """Fetch container status for every server and derive per-app/env cache."""
+        from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
         config = self.shipyard_config
+        server_cache: dict[str, list[dict[str, str]]] = {}
+        total = len(config.servers)
+        completed = 0
 
-        # Group work by server to minimise SSH connections
-        # Each task is (app_id, env_id, server_id, container_names)
-        tasks_by_server: dict[str, list[tuple[str, str, list[str]]]] = {}
-        for app_id, app_config in config.applications.items():
-            for env_id, env_config in app_config.environments.items():
-                tasks_by_server.setdefault(env_config.server, []).append(
-                    (app_id, env_id, env_config.containers)
-                )
+        self._update_fetch_bar(0, total)
 
-        cache: dict[str, dict[str, list[dict[str, str]]]] = {}
-
-        async def fetch_server(server_id: str, entries: list[tuple[str, str, list[str]]]) -> None:
+        async def fetch_server(server_id: str) -> None:
+            nonlocal completed
             try:
                 conn = await self.ssh_pool.get_connection(server_id)
+                result = await conn.run("docker ps -a --format json", timeout=15)
+                stdout = result.stdout or ""
+                containers: list[dict[str, str]] = []
+                for line in stdout.strip().splitlines():
+                    if not line:
+                        continue
+                    data = json.loads(line)
+                    containers.append({
+                        "name": data.get("Names", ""),
+                        "status": data.get("State", "unknown"),
+                        "image": data.get("Image", ""),
+                        "uptime": data.get("Status", ""),
+                    })
+                server_cache[server_id] = containers
             except Exception:
-                # Mark all containers on this server as unknown
-                for app_id, env_id, container_names in entries:
-                    cache.setdefault(app_id, {})[env_id] = [
-                        {"name": c, "status": "unknown", "image": "", "uptime": ""}
-                        for c in container_names
-                    ]
-                return
+                server_cache[server_id] = []
+            finally:
+                completed += 1
+                self._update_fetch_bar(completed, total)
 
-            for app_id, env_id, container_names in entries:
+        await asyncio.gather(
+            *(fetch_server(sid) for sid in config.servers)
+        )
+
+        # Derive per-app/env container cache from server-level data
+        cache: dict[str, dict[str, list[dict[str, str]]]] = {}
+        for app_id, app_config in config.applications.items():
+            for env_id, env_config in app_config.environments.items():
+                server_containers = server_cache.get(env_config.server, [])
+                names_on_server = {c["name"] for c in server_containers}
                 containers_data: list[dict[str, str]] = []
-                for container_name in container_names:
-                    try:
-                        result = await conn.run(
-                            f"docker ps -a --format json --filter name=^/{container_name}$",
-                            timeout=10,
-                        )
-                        stdout = result.stdout or ""
-                        for line in stdout.strip().splitlines():
-                            if not line:
-                                continue
-                            data = json.loads(line)
-                            containers_data.append({
-                                "name": data.get("Names", container_name),
-                                "status": data.get("State", "unknown"),
-                                "image": data.get("Image", ""),
-                                "uptime": data.get("Status", ""),
-                            })
-                    except Exception:
+                for container_name in env_config.containers:
+                    if container_name in names_on_server:
+                        for c in server_containers:
+                            if c["name"] == container_name:
+                                containers_data.append(c)
+                                break
+                    else:
                         containers_data.append({
                             "name": container_name,
                             "status": "unknown",
@@ -106,12 +118,20 @@ class ShipyardApp(App):
                         })
                 cache.setdefault(app_id, {})[env_id] = containers_data
 
-        await asyncio.gather(
-            *(fetch_server(sid, entries) for sid, entries in tasks_by_server.items())
-        )
-
+        self.server_container_cache = server_cache
         self.container_cache = cache
-        self.post_message(self.ContainerCacheUpdated())
+
+        # Notify the active screen of cache update
+        screen = self.screen
+        if hasattr(screen, "on_container_cache_updated"):
+            screen.on_container_cache_updated()
+
+        # Start the hide timer on the status bar
+        try:
+            bar = screen.query_one(FetchStatusBar)
+            bar.show_complete()
+        except Exception:
+            pass
 
 
 def main() -> None:

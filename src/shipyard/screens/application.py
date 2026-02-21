@@ -9,6 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from shipyard.widgets.environment_panel import EnvironmentPanel
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
 
 
 class ApplicationScreen(Screen):
@@ -52,6 +53,7 @@ class ApplicationScreen(Screen):
                             path=env_config.path,
                             id=f"env-panel-{env_id}",
                         )
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -99,8 +101,8 @@ class ApplicationScreen(Screen):
             except Exception:
                 pass
 
-    def on_shipyard_app_container_cache_updated(self, event) -> None:
-        """React to global container cache refresh."""
+    def on_container_cache_updated(self) -> None:
+        """React to global container cache refresh (called by App handler)."""
         self._apply_cached_status()
 
     def action_deploy(self) -> None:

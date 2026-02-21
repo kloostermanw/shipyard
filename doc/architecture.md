@@ -24,9 +24,9 @@ A Docker container is a running instance that belongs to an application. Contain
 ┌─────────────────────────────────────────────────┐
 │                   TUI Layer                      │
 │  Screens: Dashboard, Application, Deploy,        │
-│           Servers, Logs                          │
+│           Servers, ServerDetail, Logs             │
 │  Widgets: EnvironmentPanel, DeployProgress,      │
-│           StatusIndicator                        │
+│           StatusIndicator, FetchStatusBar        │
 ├─────────────────────────────────────────────────┤
 │                Service Layer                     │
 │  Deploy:   deployer.py (run rerun.sh)           │
@@ -118,6 +118,7 @@ ShipyardApp
 │   │   │   └── DeployConfirmModal (modal)
 │   │   └── → LogViewerScreen (push on 'l')
 │   └── → ServersScreen (push on 's')
+│       └── → ServerDetailScreen (push on enter)
 ```
 
 ### DashboardScreen
@@ -132,10 +133,33 @@ Two-phase screen:
 2. **Deploy execution**: After confirmation, streams `rerun.sh` output in a RichLog widget
 
 ### ServersScreen
-DataTable listing all configured servers with connectivity status (SSH reachable), Docker version, and container counts.
+DataTable listing all configured servers with connectivity status (SSH reachable), Docker version, and container counts. Press enter on a row to open the ServerDetailScreen.
+
+### ServerDetailScreen
+Shows all Docker containers on a specific server via `docker ps -a --format json`. Displays container name, status (color-coded), image, and uptime in a DataTable.
 
 ### LogViewerScreen
 Streams `docker logs -f <container>` output from a remote server via SSH. Supports follow mode toggle and clearing the display.
+
+## Container Status Cache
+
+Shipyard uses a two-tier caching model for container status data, populated at startup and refreshable via the `r` key on any screen.
+
+### Tier 1: Server-level cache (`server_container_cache`)
+
+- Keyed by `server_id → list[dict]`
+- One unfiltered `docker ps -a --format json` SSH call per configured server
+- Contains **all** containers on each server (not just Shipyard-managed ones)
+- Used by `ServerDetailScreen` to show every container on a server
+
+### Tier 2: App/env-level cache (`container_cache`)
+
+- Keyed by `app_id → env_id → list[dict]`
+- Derived from the server-level cache by matching configured container names
+- Containers not found on the server get `status: "unknown"`
+- Used by `ApplicationScreen` / `EnvironmentPanel` for per-app container status
+
+Both caches are populated together in `_fetch_all_container_status()`. As each server completes, a `FetchProgress(completed, total)` message is posted so the `FetchStatusBar` widget can show incremental progress (e.g. "Fetching servers: 2/4"). Once all servers are done and the caches are built, a `ContainerCacheUpdated` message is posted so all active screens can react. The status bar turns green at completion and auto-hides after 2 seconds.
 
 ## Key Design Decisions
 

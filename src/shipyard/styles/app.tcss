@@ -149,6 +149,25 @@ DeployProgress {
     height: 1fr;
 }
 
+/* Server detail screen */
+#server-detail-container {
+    padding: 1 2;
+}
+
+#server-detail-title {
+    text-style: bold;
+    margin-bottom: 0;
+}
+
+#server-detail-status {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#server-detail-table {
+    height: 1fr;
+}
+
 /* Log viewer screen */
 #logs-container {
     padding: 1 2;

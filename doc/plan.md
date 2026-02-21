@@ -46,6 +46,7 @@ shipyard/
 │   │   ├── application.py       # App detail: envs + containers
 │   │   ├── deploy.py            # Deploy progress
 │   │   ├── servers.py           # Server status
+│   │   ├── server_detail.py    # Server detail: all containers
 │   │   └── logs.py              # Container log viewer
 │   ├── widgets/
 │   │   ├── environment_panel.py
@@ -72,6 +73,7 @@ shipyard/
 - **Application**: Per-app detail with environment panels showing containers
 - **Deploy**: Version selection, confirmation, live output streaming
 - **Servers**: Server connectivity and resource overview
+- **Server Detail**: All Docker containers on a specific server
 - **Logs**: Live container log streaming via SSH
 
 ## Implementation Order

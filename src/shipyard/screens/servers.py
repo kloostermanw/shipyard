@@ -8,6 +8,8 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
 
 class ServersScreen(Screen):
     """Screen showing all configured servers and their connectivity status."""
@@ -23,6 +25,7 @@ class ServersScreen(Screen):
             yield Static("[bold]Servers[/]", id="servers-title")
             table = DataTable(id="servers-table", cursor_type="row")
             yield table
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -75,6 +78,13 @@ class ServersScreen(Screen):
     def action_refresh(self) -> None:
         self._populate_table()
         self._check_connectivity()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle enter key on a server row."""
+        server_id = str(event.row_key.value)
+        from shipyard.screens.server_detail import ServerDetailScreen
+
+        self.app.push_screen(ServerDetailScreen(server_id))
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

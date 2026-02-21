@@ -102,8 +102,8 @@ Select an environment (left) and a version from GitHub tags/releases (right). Ve
 ```
 
 Selection flow:
-1. Select an environment in the left `ListView` (auto-selected if only one)
-2. Select a version in the right `ListView`
+1. Highlight an environment in the left `ListView` (auto-selected if only one; highlighting is enough, no Enter needed)
+2. Select a version in the right `ListView` by pressing Enter
 3. Confirmation modal appears
 
 ## 4. Deploy Screen - Confirmation Modal
@@ -228,8 +228,43 @@ Overview of all configured servers and their connectivity status. Status is chec
 Key bindings:
 - `r` — Re-check all server connectivity
 - `escape` — Back to Dashboard (`priority=True`)
+- `enter` — Open server detail (handled via `on_data_table_row_selected`)
 
-## 8. Log Viewer Screen
+## 8. Server Detail Screen
+
+Detail view for a single server showing all Docker containers (via `docker ps -a --format json`). Container status is color-coded: green for running, red for exited/dead, yellow for other states.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Shipyard - Docker Deployment Manager                              12:34:56  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  prod-web-01 — 10.0.1.10                                                   │
+│  4 container(s)                                                             │
+│                                                                             │
+│  ┌──────────────────────┬──────────┬───────────────────────────┬───────────┐│
+│  │ Container            │ Status   │ Image                     │ Uptime    ││
+│  ├──────────────────────┼──────────┼───────────────────────────┼───────────┤│
+│  │ genotool-prd-php     │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
+│  │ genotool-prd-queue   │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
+│  │ genotool-prd-nginx   │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
+│  │ old-app-worker       │ exited   │ myorg/old-app:v1.0        │ Exited 3d ││
+│  │                      │          │                           │           ││
+│  │                      │          │                           │           ││
+│  └──────────────────────┴──────────┴───────────────────────────┴───────────┘│
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ escape Back  r Refresh                                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+Container data is read from the shared `server_container_cache` (populated at startup). No separate SSH call is made when opening this screen.
+
+Key bindings:
+- `r` — Triggers a global container cache refresh (same as other screens)
+- `escape` — Back to Servers screen (`priority=True`)
+
+## 9. Log Viewer Screen
 
 Live streaming of Docker container logs via `docker logs -f --tail 100`.
 
@@ -279,12 +314,12 @@ Key bindings:
               ▼           │           ▼
       ┌───────────┐      │    ┌───────────┐
       │Application│      │    │  Servers   │
-      └─────┬─────┘      │    └───────────┘
-            │             │
-      ┌─────┼─────┐      │
-      │ d   │ l   │      │
-      ▼     ▼     │      │
-┌──────────┐ ┌────────┐  │
+      └─────┬─────┘      │    └─────┬─────┘
+            │             │          │ enter
+      ┌─────┼─────┐      │          ▼
+      │ d   │ l   │      │   ┌──────────────┐
+      ▼     ▼     │      │   │Server Detail │
+┌──────────┐ ┌────────┐  │   └──────────────┘
 │  Deploy  │ │  Logs  │  │
 ├──────────┤ └────────┘  │
 │ Confirm  │             │
@@ -294,6 +329,16 @@ Key bindings:
 Key: ▼ = push_screen()
      escape = pop_screen() (back)
 ```
+
+## Fetch Status Bar
+
+All screens include a `FetchStatusBar` widget docked to the bottom (above the Footer). This 1-line bar shows progress during container cache refreshes:
+
+- Displays "Fetching servers: 0/N" when a refresh starts, updating as each server completes
+- Yellow text while in progress, green when all servers have responded
+- Auto-hides after 2 seconds once the cache update is complete
+
+The bar reacts to `FetchProgress` and `ContainerCacheUpdated` messages posted by `ShipyardApp`.
 
 ## Implementation Notes
 

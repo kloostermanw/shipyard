@@ -10,6 +10,7 @@ from textual.widgets import Button, Footer, Header, ListView, ListItem, Label, S
 
 from shipyard.deploy.deployer import DeployStatus
 from shipyard.widgets.deploy_progress import DeployProgress
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
 
 
 class DeployConfirmModal(ModalScreen[bool]):
@@ -71,6 +72,7 @@ class DeployScreen(Screen):
                 yield ListView(*env_items, id="env-list")
                 yield ListView(id="version-list")
             yield DeployProgress(id="deploy-progress")
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -132,6 +134,13 @@ class DeployScreen(Screen):
         else:
             panel.update("[dim]No active workflows[/]")
             panel.display = True
+
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        """Track environment selection when the cursor moves."""
+        if event.list_view.id == "env-list":
+            idx = event.list_view.index
+            if idx is not None and idx < len(self._env_ids):
+                self._selected_env = self._env_ids[idx]
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         list_view = event.list_view

@@ -8,6 +8,8 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
 
 class DashboardScreen(Screen):
     """Home screen listing all configured applications."""
@@ -25,6 +27,7 @@ class DashboardScreen(Screen):
             table = DataTable(id="app-table", cursor_type="row")
             table.add_columns("Application", "Environments", "GitHub")
             yield table
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:

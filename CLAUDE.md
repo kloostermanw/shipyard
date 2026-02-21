@@ -34,6 +34,7 @@ src/shipyard/
 │   ├── application.py  # App detail: environments + containers
 │   ├── deploy.py       # Deploy version selection + progress
 │   ├── servers.py      # Server status overview
+│   ├── server_detail.py # Server detail: all containers on a server
 │   └── logs.py         # Live container log viewer
 ├── widgets/            # Reusable Textual widgets
 └── styles/             # Textual CSS files

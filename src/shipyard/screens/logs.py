@@ -10,6 +10,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, RichLog, Static
 
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
 
 class LogViewerScreen(Screen):
     """Screen for streaming Docker container logs via SSH."""
@@ -43,6 +45,7 @@ class LogViewerScreen(Screen):
                 auto_scroll=True,
                 wrap=True,
             )
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:

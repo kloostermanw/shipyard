@@ -7,6 +7,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TextArea
 
+from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
 
 class ConfigScreen(Screen):
     """Screen for editing the YAML configuration file."""
@@ -25,6 +27,7 @@ class ConfigScreen(Screen):
         yield Header()
         yield Static(f" Config: [bold]{config_path}[/]", id="section-title")
         yield TextArea(id="config-editor", language="yaml", show_line_numbers=True)
+        yield FetchStatusBar()
         yield Footer()
 
     def on_mount(self) -> None:
