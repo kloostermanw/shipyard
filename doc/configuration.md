@@ -96,6 +96,41 @@ Each environment maps to a specific server, a path on that server, and the Docke
 | `containers` | No | `[]` | List of Docker container names (as shown in `docker ps`) |
 | `local-path` | No | `null` | Local directory path to sync to the remote `path` via SFTP. Must be absolute or start with `~`. When set, enables one-way file sync (local → remote) on the Application screen. |
 
+## Secrets File
+
+Shipyard includes an encrypted secret store for sensitive values (database passwords, API keys, etc.) used in template files. The store is a single encrypted file at:
+
+```
+~/.config/shipyard/secrets.enc
+```
+
+- Encrypted with Fernet (AES-128-CBC) using a key derived from a master password via PBKDF2 (480,000 iterations)
+- Managed via the Secrets screen (`e` key on Dashboard)
+- Secrets are key-value pairs (e.g., `DB_PASSWORD=secret123`)
+
+### Template Variables (.j2 files)
+
+Files ending in `.j2` in a `local-path` directory are treated as templates when the secret store is unlocked. Before uploading, `{{VAR_NAME}}` placeholders are replaced with values from the secret store, and the `.j2` extension is stripped.
+
+**Example:** A local file `config.env.j2` containing:
+```
+DB_HOST=db.example.com
+DB_PASSWORD={{DB_PASSWORD}}
+API_KEY={{API_KEY}}
+```
+
+With secrets `DB_PASSWORD=secret123` and `API_KEY=abc456`, this uploads as `config.env` containing:
+```
+DB_HOST=db.example.com
+DB_PASSWORD=secret123
+API_KEY=abc456
+```
+
+**Rules:**
+- All referenced variables must exist in the secret store (strict — no partial renders)
+- Both `foo.txt` and `foo.txt.j2` cannot coexist in the same directory (conflict error)
+- If `.j2` files are present but the secret store is locked, sync aborts with an error
+
 ## Validation Rules
 
 The following cross-reference validations are performed at load time:

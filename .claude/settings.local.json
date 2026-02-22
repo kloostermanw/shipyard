@@ -38,7 +38,12 @@
       "Bash(uv run:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(python:*)",
-      "Bash(/Users/wiebe/repos/shipyard/.venv/bin/python:*)"
+      "Bash(/Users/wiebe/repos/shipyard/.venv/bin/python:*)",
+      "Bash(grep:*)",
+      "Bash(git worktree:*)",
+      "Bash(cd:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

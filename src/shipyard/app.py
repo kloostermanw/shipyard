@@ -14,6 +14,7 @@ from shipyard.config.schema import ShipyardConfig
 from shipyard.deploy.deployer import Deployer
 from shipyard.github.client import GitHubClient
 from shipyard.ssh.connection import SSHConnectionPool
+from shipyard.secrets.store import SecretStore
 from shipyard.sync.syncer import FileSyncer
 
 
@@ -29,7 +30,8 @@ class ShipyardApp(App):
         self.ssh_pool = SSHConnectionPool(config.global_, config.servers)
         self.github_client = GitHubClient(config.global_.github)
         self.deployer = Deployer(self.ssh_pool)
-        self.file_syncer = FileSyncer(self.ssh_pool)
+        self.secret_store = SecretStore()
+        self.file_syncer = FileSyncer(self.ssh_pool, self.secret_store)
         self.container_cache: dict[str, dict[str, list[dict[str, str]]]] = {}
         self.server_container_cache: dict[str, list[dict[str, str]]] = {}
 

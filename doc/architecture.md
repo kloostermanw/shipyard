@@ -24,14 +24,16 @@ A Docker container is a running instance that belongs to an application. Contain
 ┌─────────────────────────────────────────────────┐
 │                   TUI Layer                      │
 │  Screens: Dashboard, Application, Deploy,        │
-│           Sync, Servers, ServerDetail, Logs       │
+│           Sync, Servers, ServerDetail, Logs,      │
+│           Secrets                                 │
 │  Widgets: EnvironmentPanel, DeployProgress,      │
 │           StatusIndicator, SyncIndicator,        │
 │           FetchStatusBar                         │
 ├─────────────────────────────────────────────────┤
 │                Service Layer                     │
 │  Deploy:   deployer.py (run rerun.sh)           │
-│  Sync:     syncer.py (SFTP file sync)           │
+│  Sync:     syncer.py (SFTP file sync + templates)│
+│  Secrets:  store.py (encrypted key-value store) │
 │  GitHub:   client.py (releases, tags)           │
 │  Config:   manager.py (load, validate, resolve) │
 ├─────────────────────────────────────────────────┤
@@ -96,6 +98,16 @@ Async HTTP client (httpx) for the GitHub REST API:
 
 Uses the `GITHUB_TOKEN` environment variable for authentication (optional, increases rate limits).
 
+### secrets/store.py - Secret Store
+
+Encrypted key-value store for sensitive configuration values (passwords, API keys, etc.):
+
+- Uses `cryptography` library with Fernet symmetric encryption + PBKDF2 key derivation (480k iterations)
+- File format: `<16-byte salt><fernet-encrypted JSON>` stored at `~/.config/shipyard/secrets.enc`
+- `unlock(password)` — derive key from master password, decrypt and load secrets (creates new empty store if file doesn't exist)
+- Standard CRUD: `get(key)`, `set(key, value)`, `delete(key)`, `list_keys()`, `get_all()`
+- Raises `SecretStoreError` on wrong password, locked access, or corrupt data
+
 ### sync/syncer.py - File Syncer
 
 One-way file sync (local → remote) via SFTP over the existing SSH connections:
@@ -108,6 +120,8 @@ One-way file sync (local → remote) via SFTP over the existing SSH connections:
 6. Yield progress events for the UI
 
 The syncer never deletes remote files — it only adds or updates.
+
+**Template processing (.j2 files):** When the secret store is unlocked, files ending in `.j2` are treated as templates. `{{VAR_NAME}}` placeholders are replaced with values from the secret store before upload, and the `.j2` extension is stripped from the remote filename. Missing variables cause a strict error (no partial renders). If the secret store is locked and `.j2` files are present, sync aborts with an error message.
 
 ### deploy/deployer.py - Deployment Executor
 
@@ -133,8 +147,10 @@ ShipyardApp
 │   │   │   └── DeployConfirmModal (modal)
 │   │   ├── → SyncScreen (push on 'y')
 │   │   └── → LogViewerScreen (push on 'l')
-│   └── → ServersScreen (push on 's')
-│       └── → ServerDetailScreen (push on enter)
+│   ├── → ServersScreen (push on 's')
+│   │   └── → ServerDetailScreen (push on enter)
+│   └── → SecretsScreen (push on 'e')
+│       └── SecretInputModal (modal)
 ```
 
 ### DashboardScreen

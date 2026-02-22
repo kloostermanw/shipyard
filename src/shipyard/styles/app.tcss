@@ -267,3 +267,74 @@ DeployConfirmModal {
 .error {
     color: $error;
 }
+
+/* Secrets screen */
+#secrets-container {
+    padding: 1 2;
+}
+
+#secrets-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#secrets-hint {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#password-input {
+    width: 40;
+    margin-bottom: 1;
+}
+
+#secrets-error {
+    height: auto;
+}
+
+#secrets-table {
+    height: 1fr;
+}
+
+/* Secret input modal */
+SecretInputModal {
+    align: center middle;
+}
+
+#secret-dialog {
+    width: 50;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#secret-dialog-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+.secret-label {
+    height: auto;
+    margin-top: 1;
+}
+
+#secret-key-input {
+    margin-bottom: 0;
+}
+
+#secret-value-input {
+    margin-bottom: 0;
+}
+
+#secret-buttons {
+    margin-top: 1;
+    height: auto;
+    align: center middle;
+}
+
+#secret-buttons Button {
+    margin: 0 1;
+}

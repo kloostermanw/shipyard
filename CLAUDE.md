@@ -30,7 +30,9 @@ src/shipyard/
 ├── deploy/             # Deployment logic
 │   └── deployer.py     # Run rerun.sh over SSH, stream output
 ├── sync/               # File sync (local → remote)
-│   └── syncer.py       # SFTP file sync via SSH connections
+│   └── syncer.py       # SFTP file sync via SSH connections + .j2 template processing
+├── secrets/            # Encrypted secret store
+│   └── store.py        # Fernet+PBKDF2 encrypted key-value store
 ├── screens/            # Textual screens (views)
 │   ├── dashboard.py    # Home screen: app list
 │   ├── application.py  # App detail: environments + containers
@@ -38,6 +40,7 @@ src/shipyard/
 │   ├── sync.py         # File sync progress screen
 │   ├── servers.py      # Server status overview
 │   ├── server_detail.py # Server detail: all containers on a server
+│   ├── secrets.py      # Secret store management screen
 │   └── logs.py         # Live container log viewer
 ├── widgets/            # Reusable Textual widgets
 └── styles/             # Textual CSS files

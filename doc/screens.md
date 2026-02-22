@@ -14,7 +14,7 @@ The home screen showing all applications at a glance with their **latest GitHub 
 │  ┌──────────────┬────────┬────────┬────────┬─────────┐                      │
 │  │ Application  │ Latest │ PRD    │ UAT    │ STAGING │                      │
 │  ├──────────────┼────────┼────────┼────────┼─────────┤                      │
-│  │▶Genotool     │ v3.4   │ v3.2   │ v3.3   │ v3.4    │                      │
+│  │▶Mainappl     │ v3.4   │ v3.2   │ v3.3   │ v3.4    │                      │
 │  │ Frontend App │ v2.1   │ v2.0   │ -      │ v2.1    │                      │
 │  │ API Service  │ v5.0   │ v4.9   │ v5.0   │ v5.0    │                      │
 │  │ Admin Panel  │ v1.3   │ v1.3   │ -      │ -       │                      │
@@ -22,7 +22,7 @@ The home screen showing all applications at a glance with their **latest GitHub 
 │  └──────────────┴────────┴────────┴────────┴─────────┘                      │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ r Refresh  s Servers  q Quit                     enter Open (on table row)  │
+│ r Refresh  s Servers  e Secrets  q Quit           enter Open (on table row)  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -33,6 +33,7 @@ The home screen showing all applications at a glance with their **latest GitHub 
 Key bindings (all `priority=True`):
 - `r` — Re-populate the table, trigger a container cache refresh, and re-fetch GitHub versions
 - `s` — Open Servers screen
+- `e` — Open Secrets screen
 - `q` — Quit the application
 - `enter` — Open the selected application (handled via `on_data_table_row_selected`)
 
@@ -45,22 +46,22 @@ Detail view for a single application. Environments are shown in a **TabbedConten
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Genotool                                                                   │
-│  Genotool application                                                       │
-│  GitHub: myorg/genotool (tracking tags)                                     │
+│  Mainappl                                                                   │
+│  Mainappl application                                                       │
+│  GitHub: myorg/mainappl (tracking tags)                                     │
 │                                                                             │
-│  ┌─ PRD ──┬─ UAT ──┬─ STAGING ─────────────────────────────────────────┐   │
+│  ┌─ PRD ──┬─ UAT ──┬─ STAGING ──────────────────────────────────────────┐   │
 │  │                                                                      │   │
 │  │  Server: prod-web-01                                                 │   │
-│  │  Path: /opt/apps/genotool                            ● synced        │   │
-│  │  Local: ~/repos/genotool                                             │   │
+│  │  Path: /opt/apps/mainappl                            ● synced        │   │
+│  │  Local: ~/repos/mainappl                                             │   │
 │  │                                                                      │   │
 │  │  Container              Status     Image                    Uptime   │   │
-│  │  ──────────────────────────────────────────────────────────────────   │   │
-│  │  genotool-prd-php       running    myorg/genotool:v3.2      2d ago   │   │
-│  │  genotool-prd-queue     running    myorg/genotool:v3.2      2d ago   │   │
-│  │  genotool-prd-scheduler running    myorg/genotool:v3.2      2d ago   │   │
-│  │  genotool-prd-nginx     running    myorg/genotool:v3.2      2d ago   │   │
+│  │  ──────────────────────────────────────────────────────────────────  │   │
+│  │  mainappl-prd-php       running    myorg/mainappl:v3.2      2d ago   │   │
+│  │  mainappl-prd-queue     running    myorg/mainappl:v3.2      2d ago   │   │
+│  │  mainappl-prd-scheduler running    myorg/mainappl:v3.2      2d ago   │   │
+│  │  mainappl-prd-nginx     running    myorg/mainappl:v3.2      2d ago   │   │
 │  │                                                                      │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -85,7 +86,7 @@ Select an environment (left) and a version from GitHub tags/releases (right). Ve
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Deploy Genotool                                                            │
+│  Deploy Mainappl                                                            │
 │                                                                             │
 │  ┌─ Environment ──────────┐ ┌─ Version ──────────────────────────────────┐  │
 │  │                        │ │                                            │  │
@@ -118,11 +119,11 @@ Modal dialog shown after selecting environment + version.
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Deploy Genotool                                                            │
+│  Deploy Mainappl                                                            │
 │                                                                             │
 │  ┌─ Environment ──┐ ┌─ Ve┌──────────────────────────────────────┐────────┐  │
 │  │                │ │    │                                      │        │  │
-│  │ ▶ PRD          │ │ ▶ v│        Deploy Genotool?              │        │  │
+│  │ ▶ PRD          │ │ ▶ v│        Deploy Mainappl?              │        │  │
 │  │   UAT          │ │   v│                                      │        │  │
 │  │   STAGING      │ │   v│  Version:     v3.4.0                 │        │  │
 │  │                │ │   v│  Environment: prd                    │        │  │
@@ -146,25 +147,25 @@ After confirmation, the version selection is hidden and the `DeployProgress` wid
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Deploy Genotool                                                            │
+│  Deploy Mainappl                                                            │
 │                                                                             │
-│  DEPLOYING Running ./rerun.sh v3.4.0 in /opt/apps/genotool                 │
+│  DEPLOYING Running ./rerun.sh v3.4.0 in /opt/apps/mainappl                 │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │ Connecting to prod-web-01...                                            ││
-│  │ Running ./rerun.sh v3.4.0 in /opt/apps/genotool                        ││
-│  │ Pulling ghcr.io/myorg/genotool:v3.4.0...                               ││
-│  │ v3.4.0: Pulling from myorg/genotool                                     ││
+│  │ Running ./rerun.sh v3.4.0 in /opt/apps/mainappl                         ││
+│  │ Pulling ghcr.io/myorg/mainappl:v3.4.0...                                ││
+│  │ v3.4.0: Pulling from myorg/mainappl                                     ││
 │  │ a2abf6c4d29d: Already exists                                            ││
 │  │ c5608244554d: Pull complete                                             ││
 │  │ Digest: sha256:abc123...                                                ││
 │  │ Status: Downloaded newer image                                          ││
-│  │ Stopping genotool-prd-php...                                            ││
-│  │ Stopping genotool-prd-queue...                                          ││
-│  │ Stopping genotool-prd-nginx...                                          ││
-│  │ Starting genotool-prd-php...                                            ││
-│  │ Starting genotool-prd-queue...                                          ││
-│  │ Starting genotool-prd-nginx...                                          ││
+│  │ Stopping mainappl-prd-php...                                            ││
+│  │ Stopping mainappl-prd-queue...                                          ││
+│  │ Stopping mainappl-prd-nginx...                                          ││
+│  │ Starting mainappl-prd-php...                                            ││
+│  │ Starting mainappl-prd-queue...                                          ││
+│  │ Starting mainappl-prd-nginx...                                          ││
 │  │ All containers started                                                  ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │                                                                             │
@@ -182,14 +183,14 @@ After a successful deployment.
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Deploy Genotool                                                            │
+│  Deploy Mainappl                                                            │
 │                                                                             │
 │  SUCCESS Deploy completed successfully (exit code 0)                        │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │ Connecting to prod-web-01...                                            ││
-│  │ Running ./rerun.sh v3.4.0 in /opt/apps/genotool                        ││
-│  │ Pulling ghcr.io/myorg/genotool:v3.4.0...                               ││
+│  │ Running ./rerun.sh v3.4.0 in /opt/apps/mainappl                        ││
+│  │ Pulling ghcr.io/myorg/mainappl:v3.4.0...                               ││
 │  │ ...                                                                     ││
 │  │ All containers started                                                  ││
 │  │ Deploy completed successfully (exit code 0)                             ││
@@ -248,9 +249,9 @@ Detail view for a single server showing all Docker containers (via `docker ps -a
 │  ┌──────────────────────┬──────────┬───────────────────────────┬───────────┐│
 │  │ Container            │ Status   │ Image                     │ Uptime    ││
 │  ├──────────────────────┼──────────┼───────────────────────────┼───────────┤│
-│  │ genotool-prd-php     │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
-│  │ genotool-prd-queue   │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
-│  │ genotool-prd-nginx   │ running  │ myorg/genotool:v3.2       │ Up 2 days ││
+│  │ mainappl-prd-php     │ running  │ myorg/mainappl:v3.2       │ Up 2 days ││
+│  │ mainappl-prd-queue   │ running  │ myorg/mainappl:v3.2       │ Up 2 days ││
+│  │ mainappl-prd-nginx   │ running  │ myorg/mainappl:v3.2       │ Up 2 days ││
 │  │ old-app-worker       │ exited   │ myorg/old-app:v1.0        │ Exited 3d ││
 │  │                      │          │                           │           ││
 │  │                      │          │                           │           ││
@@ -276,7 +277,7 @@ Live streaming of Docker container logs via `docker logs -f --tail 100`.
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Logs: genotool-prd-php on prod-web-01                        FOLLOWING    │
+│  Logs: mainappl-prd-php on prod-web-01                        FOLLOWING    │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │ [2026-02-21 12:30:01] INFO: Worker started pid=42                       ││
@@ -314,8 +315,8 @@ Shows file sync progress when syncing local files to a remote server via SFTP. O
 │ Shipyard - Docker Deployment Manager                              12:34:56  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  Sync Genotool / PRD                                                        │
-│  Local: ~/repos/genotool → Remote: prod-web-01:/opt/apps/genotool           │
+│  Sync Mainappl / PRD                                                        │
+│  Local: ~/repos/mainappl → Remote: prod-web-01:/opt/apps/mainappl           │
 │                                                                             │
 │  SYNCING [3/5] Uploading: config/app.yaml                                   │
 │                                                                             │
@@ -338,6 +339,83 @@ Shows file sync progress when syncing local files to a remote server via SFTP. O
 Key bindings:
 - `escape` — Back to Application screen (`priority=True`)
 
+## 11. Secrets Screen
+
+Manage the encrypted secret store. Accessible from the Dashboard via `e`. The screen has two states:
+
+### Locked State
+
+Shows a password input to unlock the store. On successful unlock, the screen rebuilds to show the table view.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Shipyard - Docker Deployment Manager                              12:34:56  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Unlock Secret Store                                                        │
+│  Enter the master password to unlock your secrets.                          │
+│                                                                             │
+│  ┌────────────────────────────────────┐                                     │
+│  │ ●●●●●●●●                          │                                     │
+│  └────────────────────────────────────┘                                     │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ escape Back                                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Unlocked State
+
+Shows a DataTable of all secrets (values masked as `********`).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Shipyard - Docker Deployment Manager                              12:34:56  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Secrets                                                                    │
+│                                                                             │
+│  ┌──────────────────────────────┬──────────────────────────────────────────┐│
+│  │ Key                          │ Value                                    ││
+│  ├──────────────────────────────┼──────────────────────────────────────────┤│
+│  │▶DB_PASSWORD                  │ ********                                 ││
+│  │ API_KEY                      │ ********                                 ││
+│  │ SMTP_PASSWORD                │ ********                                 ││
+│  │                              │                                          ││
+│  └──────────────────────────────┴──────────────────────────────────────────┘│
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ a Add  e Edit  x Delete  escape Back                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+Key bindings (all `priority=True`):
+- `a` — Add new secret (opens SecretInputModal)
+- `e` — Edit selected secret (opens SecretInputModal pre-filled)
+- `x` — Delete selected secret
+- `escape` — Back to Dashboard
+
+### SecretInputModal
+
+Modal dialog for adding or editing a secret. Key input is disabled when editing.
+
+```
+┌──────────────────────────────────────────┐
+│          Add Secret                       │
+│                                           │
+│  Key:                                     │
+│  ┌──────────────────────────────────┐     │
+│  │ DB_PASSWORD                      │     │
+│  └──────────────────────────────────┘     │
+│  Value:                                   │
+│  ┌──────────────────────────────────┐     │
+│  │ ●●●●●●●●                        │     │
+│  └──────────────────────────────────┘     │
+│                                           │
+│       [ Save ]  [ Cancel ]                │
+└──────────────────────────────────────────┘
+```
+
 ## Screen Navigation
 
 ```
@@ -345,19 +423,19 @@ Key bindings:
                     │ Dashboard │ (home)
                     └─────┬─────┘
                           │
-              ┌───────────┼───────────┐
-              │ enter     │           │ s
-              ▼           │           ▼
-      ┌───────────┐      │    ┌───────────┐
-      │Application│      │    │  Servers   │
-      └─────┬─────┘      │    └─────┬─────┘
-            │             │          │ enter
-      ┌─────┼─────┼────┐ │          ▼
-      │ d   │ l   │ y  │ │   ┌──────────────┐
-      ▼     ▼     ▼    │ │   │Server Detail │
-┌──────────┐ ┌────┐ ┌──────┐ └──────────────┘
-│  Deploy  │ │Logs│ │ Sync │  │
-├──────────┤ └────┘ └──────┘  │
+              ┌───────────┼───────────┬───────────┐
+              │ enter     │           │ s         │ e
+              ▼           │           ▼           ▼
+      ┌───────────┐      │    ┌───────────┐ ┌─────────┐
+      │Application│      │    │  Servers   │ │ Secrets │
+      └─────┬─────┘      │    └─────┬─────┘ └────┬────┘
+            │             │          │ enter       │
+      ┌─────┼─────┼────┐ │          ▼            ▼
+      │ d   │ l   │ y  │ │   ┌──────────────┐ ┌──────────┐
+      ▼     ▼     ▼    │ │   │Server Detail │ │  Secret  │
+┌──────────┐ ┌────┐ ┌──────┐ └──────────────┘ │  Input   │
+│  Deploy  │ │Logs│ │ Sync │  │               │ (modal)  │
+├──────────┤ └────┘ └──────┘  │               └──────────┘
 │ Confirm  │             │
 │ (modal)  │             │
 └──────────┘             │

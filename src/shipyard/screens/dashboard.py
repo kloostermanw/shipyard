@@ -44,6 +44,7 @@ class DashboardScreen(Screen):
     BINDINGS = [
         Binding("r", "refresh", "Refresh", priority=True),
         Binding("s", "servers", "Servers", priority=True),
+        Binding("e", "secrets", "Secrets", priority=True),
         Binding("q", "quit", "Quit", priority=True),
     ]
 
@@ -158,6 +159,11 @@ class DashboardScreen(Screen):
         from shipyard.screens.servers import ServersScreen
 
         self.app.push_screen(ServersScreen())
+
+    def action_secrets(self) -> None:
+        from shipyard.screens.secrets import SecretsScreen
+
+        self.app.push_screen(SecretsScreen())
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle enter key on a table row."""

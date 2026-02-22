@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import AsyncIterator
+from typing import TYPE_CHECKING, AsyncIterator
 
 from shipyard.ssh.connection import SSHConnectionPool
+
+if TYPE_CHECKING:
+    from shipyard.secrets.store import SecretStore
+
+
+_TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
 class SyncStatus(Enum):
@@ -48,6 +55,10 @@ class SyncEvent:
     progress: tuple[int, int] | None = None
 
 
+class TemplateError(Exception):
+    """Raised when a .j2 template references undefined secret variables."""
+
+
 class FileSyncer:
     """Syncs local files to remote servers via SFTP.
 
@@ -55,19 +66,51 @@ class FileSyncer:
     Skips dotfiles (files starting with '.').
     """
 
-    def __init__(self, ssh_pool: SSHConnectionPool) -> None:
+    def __init__(
+        self, ssh_pool: SSHConnectionPool, secret_store: SecretStore | None = None
+    ) -> None:
         self._ssh_pool = ssh_pool
+        self._secret_store = secret_store
+
+    def _can_process_templates(self) -> bool:
+        """Return True if the secret store is present and unlocked."""
+        return self._secret_store is not None and self._secret_store.is_unlocked
+
+    def _process_template(self, content: bytes, file_path: str) -> bytes:
+        """Replace {{VAR}} placeholders with secret values.
+
+        Raises TemplateError listing all missing variables.
+        """
+        text = content.decode("utf-8")
+        variables = set(_TEMPLATE_RE.findall(text))
+        if not variables:
+            return content
+
+        secrets = self._secret_store.get_all() if self._secret_store else {}
+        missing = sorted(variables - secrets.keys())
+        if missing:
+            raise TemplateError(
+                f"Template '{file_path}' references undefined secrets: {', '.join(missing)}"
+            )
+
+        rendered = _TEMPLATE_RE.sub(lambda m: secrets[m.group(1)], text)
+        return rendered.encode("utf-8")
 
     def _scan_local(self, local_path: str) -> dict[str, str]:
         """Walk local directory and return {relative_path: md5_hex}.
 
         Skips dotfiles and dot-directories.
+        For .j2 files when secrets are unlocked: registers under output name
+        (strip .j2) and computes MD5 of rendered content.
         """
         root = Path(local_path).expanduser().resolve()
         result: dict[str, str] = {}
 
         if not root.is_dir():
             return result
+
+        process_templates = self._can_process_templates()
+        templates: set[str] = set()  # output names claimed by .j2 files
 
         for dirpath, dirnames, filenames in os.walk(root):
             # Skip hidden directories
@@ -78,8 +121,33 @@ class FileSyncer:
                     continue
                 full_path = Path(dirpath) / filename
                 relative = str(full_path.relative_to(root))
-                md5 = hashlib.md5(full_path.read_bytes()).hexdigest()
-                result[relative] = md5
+                raw_bytes = full_path.read_bytes()
+
+                if filename.endswith(".j2") and process_templates:
+                    output_name = relative[:-3]  # strip .j2
+                    if output_name in result:
+                        raise TemplateError(
+                            f"Conflict: both '{output_name}' and '{relative}' exist"
+                        )
+                    rendered = self._process_template(raw_bytes, relative)
+                    md5 = hashlib.md5(rendered).hexdigest()
+                    result[output_name] = md5
+                    # Track that this name came from a template
+                    templates.add(output_name)
+                else:
+                    if filename.endswith(".j2") and not process_templates:
+                        # Check for conflict with non-template file
+                        output_name = relative[:-3]
+                        if output_name in result:
+                            raise TemplateError(
+                                f"Conflict: both '{output_name}' and '{relative}' exist"
+                            )
+                    elif not filename.endswith(".j2") and relative in templates:
+                        raise TemplateError(
+                            f"Conflict: both '{relative}' and '{relative}.j2' exist"
+                        )
+                    md5 = hashlib.md5(raw_bytes).hexdigest()
+                    result[relative] = md5
 
         return result
 
@@ -101,6 +169,16 @@ class FileSyncer:
                 result.append(str(full.relative_to(root)))
 
         return result
+
+    def _get_source_path(self, local_root: Path, rel_path: str) -> tuple[Path, bool]:
+        """Return (source_file_path, is_template).
+
+        If a .j2 variant exists for rel_path, returns the template path.
+        """
+        j2_path = local_root / (rel_path + ".j2")
+        if j2_path.is_file() and self._can_process_templates():
+            return j2_path, True
+        return local_root / rel_path, False
 
     async def _get_remote_checksums(
         self, server_id: str, remote_path: str
@@ -162,18 +240,46 @@ class FileSyncer:
             dirs_missing_remote=dirs_missing,
         )
 
+    def _has_j2_files(self, local_path: str) -> bool:
+        """Check if the local directory contains any .j2 template files."""
+        root = Path(local_path).expanduser().resolve()
+        if not root.is_dir():
+            return False
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+            for f in filenames:
+                if f.endswith(".j2") and not f.startswith("."):
+                    return True
+        return False
+
     async def sync(
         self, server_id: str, local_path: str, remote_path: str
     ) -> AsyncIterator[SyncEvent]:
         """Sync local files to remote via SFTP. Yields progress events."""
         local_root = Path(local_path).expanduser().resolve()
 
+        # Check if .j2 files exist but secrets store is locked
+        if self._has_j2_files(local_path) and not self._can_process_templates():
+            yield SyncEvent(
+                status=SyncStatus.ERROR,
+                message="Template files found but secrets store is locked. "
+                "Unlock secrets first (press 'e' on dashboard).",
+            )
+            return
+
         yield SyncEvent(
             status=SyncStatus.SYNCING,
             message="Scanning local files...",
         )
 
-        local_files = self._scan_local(local_path)
+        try:
+            local_files = self._scan_local(local_path)
+        except TemplateError as exc:
+            yield SyncEvent(
+                status=SyncStatus.ERROR,
+                message=str(exc),
+            )
+            return
         local_dirs = self._scan_local_dirs(local_path)
 
         if not local_files:
@@ -238,16 +344,24 @@ class FileSyncer:
 
                 # Upload files
                 for i, rel_path in enumerate(to_sync, 1):
-                    local_file = local_root / rel_path
+                    source_path, is_template = self._get_source_path(local_root, rel_path)
                     remote_file = f"{remote_path}/{rel_path}"
 
                     yield SyncEvent(
                         status=SyncStatus.SYNCING,
-                        message=f"Uploading: {rel_path}",
+                        message=f"Uploading: {rel_path}"
+                        + (" (template)" if is_template else ""),
                         progress=(i, len(to_sync)),
                     )
 
-                    await sftp.put(str(local_file), remote_file)
+                    if is_template:
+                        rendered = self._process_template(
+                            source_path.read_bytes(), str(source_path.name)
+                        )
+                        async with sftp.open(remote_file, "wb") as f:
+                            await f.write(rendered)
+                    else:
+                        await sftp.put(str(source_path), remote_file)
 
             yield SyncEvent(
                 status=SyncStatus.IN_SYNC,
