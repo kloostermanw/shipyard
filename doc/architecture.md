@@ -24,12 +24,14 @@ A Docker container is a running instance that belongs to an application. Contain
 ┌─────────────────────────────────────────────────┐
 │                   TUI Layer                      │
 │  Screens: Dashboard, Application, Deploy,        │
-│           Servers, ServerDetail, Logs             │
+│           Sync, Servers, ServerDetail, Logs       │
 │  Widgets: EnvironmentPanel, DeployProgress,      │
-│           StatusIndicator, FetchStatusBar        │
+│           StatusIndicator, SyncIndicator,        │
+│           FetchStatusBar                         │
 ├─────────────────────────────────────────────────┤
 │                Service Layer                     │
 │  Deploy:   deployer.py (run rerun.sh)           │
+│  Sync:     syncer.py (SFTP file sync)           │
 │  GitHub:   client.py (releases, tags)           │
 │  Config:   manager.py (load, validate, resolve) │
 ├─────────────────────────────────────────────────┤
@@ -94,6 +96,19 @@ Async HTTP client (httpx) for the GitHub REST API:
 
 Uses the `GITHUB_TOKEN` environment variable for authentication (optional, increases rate limits).
 
+### sync/syncer.py - File Syncer
+
+One-way file sync (local → remote) via SFTP over the existing SSH connections:
+
+1. Scan local directory for files (skipping dotfiles)
+2. Get remote file checksums via `md5sum` over SSH
+3. Compare local vs remote to determine what needs syncing
+4. Create missing remote directories via SFTP
+5. Upload changed/new files via SFTP
+6. Yield progress events for the UI
+
+The syncer never deletes remote files — it only adds or updates.
+
 ### deploy/deployer.py - Deployment Executor
 
 The deployment is simple by design:
@@ -116,6 +131,7 @@ ShipyardApp
 │   ├── → ApplicationScreen (push on enter)
 │   │   ├── → DeployScreen (push on 'd')
 │   │   │   └── DeployConfirmModal (modal)
+│   │   ├── → SyncScreen (push on 'y')
 │   │   └── → LogViewerScreen (push on 'l')
 │   └── → ServersScreen (push on 's')
 │       └── → ServerDetailScreen (push on enter)
@@ -126,6 +142,9 @@ DataTable listing all applications with columns: name, environments, latest GitH
 
 ### ApplicationScreen
 Shows a single application's details. Displays one EnvironmentPanel widget per environment, each showing the server, deploy path, and container statuses (name, image, status, uptime from `docker ps`).
+
+### SyncScreen
+Shows file sync progress when syncing local files to a remote server. Uses the `FileSyncer` service to compare local and remote files, then transfers changed/new files via SFTP. Reuses the `DeployProgress` widget for output display.
 
 ### DeployScreen
 Two-phase screen:

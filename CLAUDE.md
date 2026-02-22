@@ -29,10 +29,13 @@ src/shipyard/
 │   └── client.py       # Fetch releases/tags
 ├── deploy/             # Deployment logic
 │   └── deployer.py     # Run rerun.sh over SSH, stream output
+├── sync/               # File sync (local → remote)
+│   └── syncer.py       # SFTP file sync via SSH connections
 ├── screens/            # Textual screens (views)
 │   ├── dashboard.py    # Home screen: app list
 │   ├── application.py  # App detail: environments + containers
 │   ├── deploy.py       # Deploy version selection + progress
+│   ├── sync.py         # File sync progress screen
 │   ├── servers.py      # Server status overview
 │   ├── server_detail.py # Server detail: all containers on a server
 │   └── logs.py         # Live container log viewer

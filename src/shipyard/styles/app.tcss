@@ -228,6 +228,38 @@ DeployConfirmModal {
     margin: 0 1;
 }
 
+/* Environment panel - sync support */
+.env-path-row {
+    height: auto;
+    width: 100%;
+}
+
+.env-path-row .env-path {
+    width: 1fr;
+    margin-bottom: 0;
+}
+
+.env-local-path {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+/* Sync screen */
+#sync-container {
+    padding: 1 2;
+}
+
+#sync-title {
+    text-style: bold;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#sync-paths {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
 .success {
     color: $success;
 }

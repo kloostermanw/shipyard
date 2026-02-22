@@ -41,17 +41,21 @@ shipyard/
 │   │   └── client.py            # GitHub releases/tags API
 │   ├── deploy/
 │   │   └── deployer.py          # Run rerun.sh over SSH
+│   ├── sync/
+│   │   └── syncer.py            # SFTP file sync (local→remote)
 │   ├── screens/
 │   │   ├── dashboard.py         # Home: app list
 │   │   ├── application.py       # App detail: envs + containers
 │   │   ├── deploy.py            # Deploy progress
+│   │   ├── sync.py              # File sync progress
 │   │   ├── servers.py           # Server status
 │   │   ├── server_detail.py    # Server detail: all containers
 │   │   └── logs.py              # Container log viewer
 │   ├── widgets/
 │   │   ├── environment_panel.py
 │   │   ├── deploy_progress.py
-│   │   └── status_indicator.py
+│   │   ├── status_indicator.py
+│   │   └── sync_indicator.py
 │   └── styles/
 │       └── app.tcss
 └── tests/
@@ -72,6 +76,7 @@ shipyard/
 - **Dashboard**: Application list with environment status overview
 - **Application**: Per-app detail with environment panels showing containers
 - **Deploy**: Version selection, confirmation, live output streaming
+- **Sync**: File sync progress display (local → remote via SFTP)
 - **Servers**: Server connectivity and resource overview
 - **Server Detail**: All Docker containers on a specific server
 - **Logs**: Live container log streaming via SSH

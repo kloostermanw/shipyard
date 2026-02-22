@@ -57,6 +57,7 @@ applications:
         containers:
           - "frontend-staging-web"
           - "frontend-staging-nginx"
+        local-path: "~/repos/frontend/config"  # optional: sync local files to remote
 
   api-service:
     name: "API Service"

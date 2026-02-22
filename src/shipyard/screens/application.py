@@ -18,6 +18,7 @@ class ApplicationScreen(Screen):
     BINDINGS = [
         Binding("d", "deploy", "Deploy", priority=True),
         Binding("l", "logs", "Logs", priority=True),
+        Binding("y", "sync", "Sync", priority=True),
         Binding("r", "refresh", "Refresh", priority=True),
         Binding("escape", "go_back", "Back", priority=True),
     ]
@@ -51,6 +52,7 @@ class ApplicationScreen(Screen):
                             env_id=env_id,
                             server_id=env_config.server,
                             path=env_config.path,
+                            local_path=env_config.local_path,
                             id=f"env-panel-{env_id}",
                         )
         yield FetchStatusBar()
@@ -59,6 +61,7 @@ class ApplicationScreen(Screen):
     def on_mount(self) -> None:
         self._apply_cached_status()
         self.run_worker(self._fetch_latest_version())
+        self.run_worker(self._check_sync_statuses())
 
     async def _fetch_latest_version(self) -> None:
         config = self.app.shipyard_config
@@ -86,6 +89,41 @@ class ApplicationScreen(Screen):
             except Exception:
                 pass
 
+    async def _check_sync_statuses(self) -> None:
+        """Check sync status for all environments that have local_path configured."""
+        config = self.app.shipyard_config
+        app_config = config.applications[self.app_id]
+        syncer = self.app.file_syncer
+
+        for env_id, env_config in app_config.environments.items():
+            if not env_config.local_path:
+                continue
+
+            try:
+                panel = self.query_one(f"#env-panel-{env_id}", EnvironmentPanel)
+                panel.update_sync_status("checking")
+            except Exception:
+                continue
+
+            try:
+                result = await syncer.check_sync_status(
+                    server_id=env_config.server,
+                    local_path=env_config.local_path,
+                    remote_path=env_config.path,
+                )
+                panel = self.query_one(f"#env-panel-{env_id}", EnvironmentPanel)
+                if result.is_in_sync:
+                    panel.update_sync_status("in_sync")
+                else:
+                    detail = f"{result.total_changes} file(s)"
+                    panel.update_sync_status("out_of_sync", detail)
+            except Exception:
+                try:
+                    panel = self.query_one(f"#env-panel-{env_id}", EnvironmentPanel)
+                    panel.update_sync_status("error")
+                except Exception:
+                    pass
+
     def _apply_cached_status(self) -> None:
         """Apply cached container status from the app-level cache to all panels."""
         cache = self.app.container_cache
@@ -104,6 +142,24 @@ class ApplicationScreen(Screen):
     def on_container_cache_updated(self) -> None:
         """React to global container cache refresh (called by App handler)."""
         self._apply_cached_status()
+        self.run_worker(self._check_sync_statuses())
+
+    def _get_active_env_id(self) -> str | None:
+        """Get the environment ID of the currently active tab."""
+        config = self.app.shipyard_config
+        app_config = config.applications[self.app_id]
+
+        try:
+            tabbed = self.query_one(TabbedContent)
+            active_tab = tabbed.active
+            env_id = active_tab.replace("tab-", "") if active_tab else None
+        except Exception:
+            env_id = None
+
+        if not env_id:
+            env_id = next(iter(app_config.environments))
+
+        return env_id
 
     def action_deploy(self) -> None:
         from shipyard.screens.deploy import DeployScreen
@@ -113,18 +169,10 @@ class ApplicationScreen(Screen):
     def action_logs(self) -> None:
         config = self.app.shipyard_config
         app_config = config.applications[self.app_id]
-
-        # Get the active tab's environment
-        try:
-            tabbed = self.query_one(TabbedContent)
-            active_tab = tabbed.active
-            # active is the tab id like "tab-prd"
-            env_id = active_tab.replace("tab-", "") if active_tab else None
-        except Exception:
-            env_id = None
+        env_id = self._get_active_env_id()
 
         if not env_id:
-            env_id = next(iter(app_config.environments))
+            return
 
         env_config = app_config.environments[env_id]
         if env_config.containers:
@@ -136,6 +184,32 @@ class ApplicationScreen(Screen):
                     container_name=env_config.containers[0],
                 )
             )
+
+    def action_sync(self) -> None:
+        """Open sync screen for the active tab's environment."""
+        config = self.app.shipyard_config
+        app_config = config.applications[self.app_id]
+        env_id = self._get_active_env_id()
+
+        if not env_id:
+            return
+
+        env_config = app_config.environments[env_id]
+        if not env_config.local_path:
+            self.notify("No local-path configured for this environment", severity="warning")
+            return
+
+        from shipyard.screens.sync import SyncScreen
+
+        self.app.push_screen(
+            SyncScreen(
+                app_id=self.app_id,
+                env_id=env_id,
+                server_id=env_config.server,
+                local_path=env_config.local_path,
+                remote_path=env_config.path,
+            )
+        )
 
     def action_refresh(self) -> None:
         self.app.refresh_container_cache()

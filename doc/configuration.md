@@ -75,6 +75,7 @@ applications:
         containers:                     # Docker container names for this env
           - "frontend-prd-web"
           - "frontend-prd-nginx"
+        local-path: "~/repos/frontend"  # Optional: local dir to sync to remote path
 ```
 
 #### `github` subsection
@@ -93,6 +94,7 @@ Each environment maps to a specific server, a path on that server, and the Docke
 | `server` | Yes | - | References a key from the `servers` section |
 | `path` | Yes | - | Absolute path to the config folder containing `rerun.sh` |
 | `containers` | No | `[]` | List of Docker container names (as shown in `docker ps`) |
+| `local-path` | No | `null` | Local directory path to sync to the remote `path` via SFTP. Must be absolute or start with `~`. When set, enables one-way file sync (local → remote) on the Application screen. |
 
 ## Validation Rules
 
@@ -103,6 +105,7 @@ The following cross-reference validations are performed at load time:
 3. Every `servers` key must be unique
 4. `github.repo` must be in `owner/repo` format
 5. `path` must be an absolute path (starts with `/`)
+6. `local-path` (if set) must be absolute or start with `~`
 
 ## Complete Example
 
@@ -240,6 +243,7 @@ class EnvironmentConfig(BaseModel):
     server: str           # references servers.<key>
     path: str             # absolute path to config folder
     containers: list[str] = []  # docker container names
+    local_path: str | None = Field(default=None, alias="local-path")  # local sync dir
 
 class ApplicationConfig(BaseModel):
     name: str

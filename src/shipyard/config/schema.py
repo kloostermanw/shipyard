@@ -52,12 +52,24 @@ class EnvironmentConfig(BaseModel):
     server: str
     path: str
     containers: list[str] = []
+    local_path: str | None = Field(default=None, alias="local-path")
+
+    model_config = {"populate_by_name": True}
 
     @field_validator("path")
     @classmethod
     def validate_absolute_path(cls, v: str) -> str:
         if not v.startswith("/"):
             raise ValueError(f"path must be absolute (start with /), got '{v}'")
+        return v
+
+    @field_validator("local_path")
+    @classmethod
+    def validate_local_path(cls, v: str | None) -> str | None:
+        if v is not None and not v.startswith("/") and not v.startswith("~"):
+            raise ValueError(
+                f"local-path must be absolute or start with ~, got '{v}'"
+            )
         return v
 
 

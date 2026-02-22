@@ -52,7 +52,8 @@ Detail view for a single application. Environments are shown in a **TabbedConten
 │  ┌─ PRD ──┬─ UAT ──┬─ STAGING ─────────────────────────────────────────┐   │
 │  │                                                                      │   │
 │  │  Server: prod-web-01                                                 │   │
-│  │  Path: /opt/apps/genotool                                            │   │
+│  │  Path: /opt/apps/genotool                            ● synced        │   │
+│  │  Local: ~/repos/genotool                                             │   │
 │  │                                                                      │   │
 │  │  Container              Status     Image                    Uptime   │   │
 │  │  ──────────────────────────────────────────────────────────────────   │   │
@@ -71,6 +72,7 @@ Detail view for a single application. Environments are shown in a **TabbedConten
 Key bindings (all `priority=True`):
 - `d` — Open Deploy screen for this application
 - `l` — Open Log viewer for the first container in the active tab's environment
+- `y` — Open Sync screen for the active tab's environment (if `local-path` is configured)
 - `r` — Refresh container status via SSH
 - `escape` — Back to Dashboard
 
@@ -303,6 +305,39 @@ Key bindings:
 - `c` — Clear the log display
 - `escape` — Stop log stream and go back (`priority=True`)
 
+## 10. Sync Screen
+
+Shows file sync progress when syncing local files to a remote server via SFTP. Opened from the Application screen by pressing `y` on an environment that has `local-path` configured.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Shipyard - Docker Deployment Manager                              12:34:56  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Sync Genotool / PRD                                                        │
+│  Local: ~/repos/genotool → Remote: prod-web-01:/opt/apps/genotool           │
+│                                                                             │
+│  SYNCING [3/5] Uploading: config/app.yaml                                   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │ Scanning local files...                                                ││
+│  │ Found 5 local file(s)                                                  ││
+│  │ Getting remote checksums...                                            ││
+│  │ 5 file(s) to sync                                                     ││
+│  │ Creating directory: config                                             ││
+│  │ Uploading: docker-compose.yml                                          ││
+│  │ Uploading: rerun.sh                                                    ││
+│  │ Uploading: config/app.yaml                                             ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ escape Back                                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+Key bindings:
+- `escape` — Back to Application screen (`priority=True`)
+
 ## Screen Navigation
 
 ```
@@ -317,12 +352,12 @@ Key bindings:
       │Application│      │    │  Servers   │
       └─────┬─────┘      │    └─────┬─────┘
             │             │          │ enter
-      ┌─────┼─────┐      │          ▼
-      │ d   │ l   │      │   ┌──────────────┐
-      ▼     ▼     │      │   │Server Detail │
-┌──────────┐ ┌────────┐  │   └──────────────┘
-│  Deploy  │ │  Logs  │  │
-├──────────┤ └────────┘  │
+      ┌─────┼─────┼────┐ │          ▼
+      │ d   │ l   │ y  │ │   ┌──────────────┐
+      ▼     ▼     ▼    │ │   │Server Detail │
+┌──────────┐ ┌────┐ ┌──────┐ └──────────────┘
+│  Deploy  │ │Logs│ │ Sync │  │
+├──────────┤ └────┘ └──────┘  │
 │ Confirm  │             │
 │ (modal)  │             │
 └──────────┘             │
