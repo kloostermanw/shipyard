@@ -24,8 +24,8 @@ A Docker container is a running instance that belongs to an application. Contain
 ┌─────────────────────────────────────────────────┐
 │                   TUI Layer                      │
 │  Screens: Dashboard, Application, Deploy,        │
-│           Sync, Servers, ServerDetail, Logs,      │
-│           Secrets                                 │
+│           Sync, TemplateDetail, Servers,          │
+│           ServerDetail, Logs, Secrets             │
 │  Widgets: EnvironmentPanel, DeployProgress,      │
 │           StatusIndicator, SyncIndicator,        │
 │           FetchStatusBar                         │
@@ -146,6 +146,10 @@ ShipyardApp
 │   │   ├── → DeployScreen (push on 'd')
 │   │   │   └── DeployConfirmModal (modal)
 │   │   ├── → SyncScreen (push on 'y')
+│   │   ├── → TemplateDetailScreen (push on template select)
+│   │   │   ├── LinkedSecretModal (modal)
+│   │   │   ├── ConvertToSecretModal (modal)
+│   │   │   └── CreateMissingSecretModal (modal)
 │   │   └── → LogViewerScreen (push on 'l')
 │   ├── → ServersScreen (push on 's')
 │   │   └── → ServerDetailScreen (push on enter)

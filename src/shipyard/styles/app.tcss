@@ -338,3 +338,72 @@ SecretInputModal {
 #secret-buttons Button {
     margin: 0 1;
 }
+
+/* Templates section in EnvironmentPanel */
+.templates-section-title {
+    margin-top: 1;
+    text-style: bold;
+    height: auto;
+}
+
+.templates-list {
+    height: auto;
+    max-height: 8;
+    margin-bottom: 1;
+}
+
+/* Template Detail screen */
+#template-detail-container {
+    padding: 1 2;
+}
+
+#template-detail-title {
+    text-style: bold;
+    margin-bottom: 0;
+}
+
+#template-detail-path {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#template-table {
+    height: 1fr;
+}
+
+/* Template modals */
+LinkedSecretModal,
+ConvertToSecretModal,
+CreateMissingSecretModal {
+    align: center middle;
+}
+
+#template-modal-dialog {
+    width: 55;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#template-modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+.template-modal-label {
+    height: auto;
+    margin-top: 1;
+}
+
+#template-modal-buttons {
+    margin-top: 1;
+    height: auto;
+    align: center middle;
+}
+
+#template-modal-buttons Button {
+    margin: 0 1;
+}

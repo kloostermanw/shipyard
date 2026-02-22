@@ -416,6 +416,46 @@ Modal dialog for adding or editing a secret. Key input is disabled when editing.
 └──────────────────────────────────────────┘
 ```
 
+## 12. Template Detail Screen
+
+Inspects a `.j2` template file's KEY=VALUE entries and their secret linkage. Opened from the Application screen by selecting a template in the Templates list (requires the secret store to be unlocked).
+
+Each row shows a key from the template, its value status, and its secret linkage:
+- **LINKED** (green dot): `{{VAR}}` exists in the secret store
+- **FAILED LINK** (red x): `{{VAR}}` referenced but missing from the secret store
+- **Non-linked** (masked): plain value, not a secret reference
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Shipyard - Docker Deployment Manager                              12:34:56  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Template: subfolder/env.j2                                                 │
+│  Path: ~/repos/mainappl                                                     │
+│                                                                             │
+│  ┌──────────────────┬─────────────┬────────────────────────────────────────┐│
+│  │ Key              │ Value       │ Secret                                 ││
+│  ├──────────────────┼─────────────┼────────────────────────────────────────┤│
+│  │▶DB_PASSWORD      │ LINKED      │ ● APP_DB_PASSWORD                      ││
+│  │ API_KEY          │ ******      │ -                                      ││
+│  │ SMTP_PASSWORD    │ FAILED LINK │ x APP_SMTP_PASSWORD                    ││
+│  │                  │             │                                        ││
+│  └──────────────────┴─────────────┴────────────────────────────────────────┘│
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ escape Back                                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+Selecting a row opens a modal based on entry type:
+
+- **LINKED** → LinkedSecretModal: edit the secret value or delete the secret
+- **Non-linked** → ConvertToSecretModal: store the value as a secret and rewrite the template line to `{{SECRET_NAME}}`
+- **FAILED LINK** → CreateMissingSecretModal: create the missing secret
+
+Key bindings:
+- `escape` — Back to Application screen (`priority=True`)
+
 ## Screen Navigation
 
 ```
@@ -430,18 +470,19 @@ Modal dialog for adding or editing a secret. Key input is disabled when editing.
       │Application│      │    │  Servers   │ │ Secrets │
       └─────┬─────┘      │    └─────┬─────┘ └────┬────┘
             │             │          │ enter       │
-      ┌─────┼─────┼────┐ │          ▼            ▼
-      │ d   │ l   │ y  │ │   ┌──────────────┐ ┌──────────┐
-      ▼     ▼     ▼    │ │   │Server Detail │ │  Secret  │
-┌──────────┐ ┌────┐ ┌──────┐ └──────────────┘ │  Input   │
-│  Deploy  │ │Logs│ │ Sync │  │               │ (modal)  │
-├──────────┤ └────┘ └──────┘  │               └──────────┘
-│ Confirm  │             │
-│ (modal)  │             │
-└──────────┘             │
+  ┌─────┼─────┼────┼───┐ │          ▼            ▼
+  │ d   │ l   │ y  │tpl│ │   ┌──────────────┐ ┌──────────┐
+  ▼     ▼     ▼    ▼   │ │   │Server Detail │ │  Secret  │
+┌──────┐┌────┐┌────┐┌────────┐└────────────┘ │  Input   │
+│Deploy││Logs││Sync││Template│               │ (modal)  │
+├──────┤└────┘└────┘│ Detail │               └──────────┘
+│Confirm│           ├────────┤
+│(modal)│           │Modals  │
+└──────┘            └────────┘
 
 Key: ▼ = push_screen()
      escape = pop_screen() (back)
+     tpl = select template from list
 ```
 
 ## Fetch Status Bar

@@ -41,6 +41,7 @@ src/shipyard/
 │   ├── servers.py      # Server status overview
 │   ├── server_detail.py # Server detail: all containers on a server
 │   ├── secrets.py      # Secret store management screen
+│   ├── template_detail.py # Template .j2 detail: KEY=VALUE entries + secret linkage
 │   └── logs.py         # Live container log viewer
 ├── widgets/            # Reusable Textual widgets
 └── styles/             # Textual CSS files

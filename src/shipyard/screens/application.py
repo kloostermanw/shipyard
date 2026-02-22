@@ -6,7 +6,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import Footer, Header, ListView, Static, TabbedContent, TabPane
 
 from shipyard.widgets.environment_panel import EnvironmentPanel
 from shipyard.widgets.fetch_status_bar import FetchStatusBar
@@ -160,6 +160,41 @@ class ApplicationScreen(Screen):
             env_id = next(iter(app_config.environments))
 
         return env_id
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Handle selection of a template from the templates ListView."""
+        list_view = event.list_view
+        if not (list_view.id and list_view.id.startswith("templates-")):
+            return
+
+        env_id = list_view.id.replace("templates-", "")
+        config = self.app.shipyard_config
+        app_config = config.applications[self.app_id]
+        env_config = app_config.environments.get(env_id)
+        if not env_config or not env_config.local_path:
+            return
+
+        store = self.app.secret_store
+        if not store.is_unlocked:
+            self.notify("Unlock the secret store first (press 'e' on dashboard)", severity="warning")
+            return
+
+        # Look up template path by index (same pattern as deploy.py)
+        panel = self.query_one(f"#env-panel-{env_id}", EnvironmentPanel)
+        idx = list_view.index
+        if idx is None or idx >= len(panel.template_paths):
+            return
+        template_rel_path = panel.template_paths[idx]
+
+        from shipyard.screens.template_detail import TemplateDetailScreen
+
+        self.app.push_screen(
+            TemplateDetailScreen(
+                local_path=env_config.local_path,
+                template_rel_path=template_rel_path,
+                secret_store=store,
+            )
+        )
 
     def action_deploy(self) -> None:
         from shipyard.screens.deploy import DeployScreen
