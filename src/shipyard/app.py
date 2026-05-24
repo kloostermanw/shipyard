@@ -6,11 +6,15 @@ import argparse
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 from textual.app import App
 
 from shipyard.config.manager import ConfigError, load_config
 from shipyard.config.schema import ShipyardConfig
+from shipyard.control.audit import AuditLog
+from shipyard.control.methods import ControlMethods
+from shipyard.control.server import ControlServer
 from shipyard.deploy.deployer import Deployer
 from shipyard.github.client import GitHubClient
 from shipyard.ssh.connection import SSHConnectionPool
@@ -32,6 +36,7 @@ class ShipyardApp(App):
         self.deployer = Deployer(self.ssh_pool)
         self.secret_store = SecretStore()
         self.file_syncer = FileSyncer(self.ssh_pool, self.secret_store)
+        self._control_server: ControlServer | None = None
         self.container_cache: dict[str, dict[str, list[dict[str, str]]]] = {}
         self.server_container_cache: dict[str, list[dict[str, str]]] = {}
 
@@ -40,8 +45,45 @@ class ShipyardApp(App):
 
         self.push_screen(DashboardScreen())
         self.refresh_container_cache()
+        if self.shipyard_config.global_.mcp.enabled:
+            self.run_worker(self._start_control_server(), exclusive=True, group="control_server")
+
+    async def _start_control_server(self) -> None:
+        cfg = self.shipyard_config.global_.mcp
+        socket_path = Path(cfg.socket_path).expanduser()
+        token_path = socket_path.with_name("control.token")
+        audit = AuditLog(path=Path(cfg.audit_log_path).expanduser())
+
+        methods = ControlMethods(
+            config=self.shipyard_config,
+            ssh_pool=self.ssh_pool,
+            deployer=self.deployer,
+            syncer=self.file_syncer,
+            github_client=self.github_client,
+            executor=_AppRemoteExecutor(self.ssh_pool),
+            secret_store=self.secret_store,
+            container_cache=self.container_cache,
+            server_container_cache=self.server_container_cache,
+            refresh_status_callback=self._refresh_for_control,
+        )
+        self._control_server = ControlServer(
+            methods=methods,
+            socket_path=socket_path,
+            token_path=token_path,
+            audit_log=audit,
+        )
+        await self._control_server.start()
+
+    async def _refresh_for_control(self) -> None:
+        """Wait for an in-flight refresh to complete, then trigger one and wait."""
+        await self._fetch_all_container_status()
 
     async def on_unmount(self) -> None:
+        if self._control_server is not None:
+            try:
+                await self._control_server.stop()
+            except Exception:
+                pass
         await self.ssh_pool.close_all()
         await self.github_client.close()
 
@@ -138,10 +180,38 @@ class ShipyardApp(App):
             pass
 
 
+class _AppRemoteExecutor:
+    """Minimal adapter exposing docker_logs_tail for the control plane."""
+
+    def __init__(self, ssh_pool: SSHConnectionPool) -> None:
+        self._ssh_pool = ssh_pool
+
+    async def docker_logs_tail(
+        self, server_id: str, container: str, lines: int
+    ) -> str:
+        conn = await self._ssh_pool.get_connection(server_id)
+        result = await conn.run(
+            f"docker logs --tail {lines} {container} 2>&1", timeout=30
+        )
+        return result.stdout or ""
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Shipyard - Docker Deployment TUI")
     parser.add_argument("--config", "-c", help="Path to config file", default=None)
+
+    subparsers = parser.add_subparsers(dest="command")
+    mcp_parser = subparsers.add_parser(
+        "mcp", help="Run the Shipyard MCP server over stdio (requires the TUI to be running)"
+    )
+    mcp_parser.add_argument("--config", "-c", help="Path to config file", default=None)
+
     args = parser.parse_args()
+
+    if args.command == "mcp":
+        from shipyard.mcp.__main__ import main as mcp_main
+        mcp_main(config_path=args.config)
+        return
 
     try:
         config = load_config(args.config)
