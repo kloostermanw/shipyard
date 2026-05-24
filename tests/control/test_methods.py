@@ -187,3 +187,77 @@ async def test_secret_ops_locked_store_raises(locked_secrets, control_deps) -> N
         with pytest.raises(ControlError) as exc_info:
             await coro
         assert exc_info.value.code == ErrorCode.SECRET_STORE_LOCKED
+
+
+async def test_templates_list_returns_j2_files(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    (local / "config.env.j2").write_text("DB_PASSWORD={{DB_PASSWORD}}\nAPI_KEY={{API_KEY}}\n")
+    (local / "static.txt").write_text("not a template\n")
+
+    # Point the prd environment at this local path
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+
+    m = ControlMethods(**control_deps)
+    result = await m.templates_list(app_id="frontend", env_id="prd")
+    paths = {t["path"] for t in result}
+    assert paths == {"config.env.j2"}
+    entry = result[0]
+    assert entry["resolution"] in {"LINKED", "MISSING", "PLAIN"}
+    assert entry["resolution"] == "LINKED"  # both vars exist in unlocked store
+
+
+async def test_templates_list_missing_variables(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    (local / "config.j2").write_text("UNKNOWN={{NOT_IN_STORE}}\n")
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+
+    m = ControlMethods(**control_deps)
+    result = await m.templates_list(app_id="frontend", env_id="prd")
+    assert result[0]["resolution"] == "MISSING"
+    assert result[0]["missing_variables"] == ["NOT_IN_STORE"]
+
+
+async def test_templates_list_no_local_path_raises(control_deps) -> None:
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = None
+    m = ControlMethods(**control_deps)
+    with pytest.raises(ControlError) as exc_info:
+        await m.templates_list(app_id="frontend", env_id="prd")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_templates_inspect_per_line(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    (local / "subdir").mkdir()
+    (local / "subdir" / "env.j2").write_text(
+        "DB_PASSWORD={{DB_PASSWORD}}\n"
+        "API_KEY={{API_KEY}}\n"
+        "MISSING_ONE={{NOT_IN_STORE}}\n"
+        "PLAIN=hello\n"
+    )
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+
+    m = ControlMethods(**control_deps)
+    result = await m.templates_inspect(app_id="frontend", env_id="prd", path="subdir/env.j2")
+    entries = {e["key"]: e for e in result["entries"]}
+    assert entries["DB_PASSWORD"]["resolution"] == "LINKED"
+    assert "value" not in entries["DB_PASSWORD"]  # value must never leak
+    assert entries["MISSING_ONE"]["resolution"] == "MISSING"
+    assert entries["PLAIN"]["resolution"] == "PLAIN"
+
+
+async def test_templates_inspect_unknown_path_raises(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+    m = ControlMethods(**control_deps)
+    with pytest.raises(ControlError) as exc_info:
+        await m.templates_inspect(app_id="frontend", env_id="prd", path="nothere.j2")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND

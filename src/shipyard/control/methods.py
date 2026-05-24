@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re as _re
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path as _Path
 from typing import Any, Awaitable, Callable
 
 from shipyard.config.schema import ApplicationConfig, ShipyardConfig
@@ -33,6 +35,23 @@ class ControlError(Exception):
 _MAX_OUTPUT_BYTES = 64 * 1024
 _MAX_LOG_LINES = 2000
 _MAX_GH_LIMIT = 100
+
+_TEMPLATE_RE = _re.compile(r"\{\{(\w+)\}\}")
+
+
+def _scan_template_files(local_path: str) -> list[_Path]:
+    """Return all .j2 paths under local_path, skipping dotfiles/dot-dirs."""
+    root = _Path(local_path).expanduser().resolve()
+    if not root.is_dir():
+        return []
+    result: list[_Path] = []
+    for path in root.rglob("*.j2"):
+        parts = path.relative_to(root).parts
+        if any(p.startswith(".") for p in parts):
+            continue
+        if path.is_file():
+            result.append(path)
+    return result
 
 
 class ControlMethods:
@@ -214,3 +233,101 @@ class ControlMethods:
         except SecretStoreError as exc:
             raise ControlError(ErrorCode.NOT_FOUND, str(exc))
         return {"ok": True}
+
+    # ---- templates -------------------------------------------------------
+
+    def _env_local_path(self, app_id: str, env_id: str) -> str:
+        app = self._config.applications.get(app_id)
+        if app is None:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown application: {app_id}")
+        env = app.environments.get(env_id)
+        if env is None:
+            raise ControlError(
+                ErrorCode.NOT_FOUND, f"Unknown environment: {app_id}/{env_id}"
+            )
+        if env.local_path is None:
+            raise ControlError(
+                ErrorCode.NOT_FOUND,
+                f"Environment {app_id}/{env_id} has no local-path configured",
+            )
+        return env.local_path
+
+    def _classify_template_variables(
+        self, variables: set[str]
+    ) -> tuple[str, list[str]]:
+        """Return (resolution, missing_variables)."""
+        if not variables:
+            return "PLAIN", []
+        if not self._secret_store.is_unlocked:
+            return "MISSING", sorted(variables)
+        secrets = set(self._secret_store.list_keys())
+        missing = sorted(variables - secrets)
+        if missing:
+            return "MISSING", missing
+        return "LINKED", []
+
+    async def templates_list(
+        self, app_id: str, env_id: str
+    ) -> list[dict[str, Any]]:
+        local_path = self._env_local_path(app_id, env_id)
+        root = _Path(local_path).expanduser().resolve()
+        result: list[dict[str, Any]] = []
+        for path in _scan_template_files(local_path):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            variables = set(_TEMPLATE_RE.findall(text))
+            resolution, missing = self._classify_template_variables(variables)
+            result.append(
+                {
+                    "path": str(path.relative_to(root)),
+                    "resolution": resolution,
+                    "missing_variables": missing,
+                    "variable_count": len(variables),
+                }
+            )
+        return result
+
+    async def templates_inspect(
+        self, app_id: str, env_id: str, path: str
+    ) -> dict[str, Any]:
+        local_path = self._env_local_path(app_id, env_id)
+        root = _Path(local_path).expanduser().resolve()
+        target = (root / path).resolve()
+        if not target.is_file():
+            raise ControlError(ErrorCode.NOT_FOUND, f"Template not found: {path}")
+        try:
+            target.relative_to(root)
+        except ValueError:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Template outside local-path: {path}")
+        text = target.read_text(encoding="utf-8", errors="replace")
+
+        known_keys = (
+            set(self._secret_store.list_keys()) if self._secret_store.is_unlocked else set()
+        )
+
+        entries: list[dict[str, Any]] = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, _, raw_value = stripped.partition("=")
+            key = key.strip()
+            raw_value = raw_value.strip()
+            match = _TEMPLATE_RE.fullmatch(raw_value)
+            if match:
+                secret_name = match.group(1)
+                if secret_name in known_keys:
+                    entries.append(
+                        {"key": key, "resolution": "LINKED", "secret_name": secret_name}
+                    )
+                else:
+                    entries.append(
+                        {
+                            "key": key,
+                            "resolution": "MISSING",
+                            "secret_name": secret_name,
+                        }
+                    )
+            else:
+                # Plain literal value; mask, never include the literal in output.
+                entries.append({"key": key, "resolution": "PLAIN"})
+        return {"path": path, "entries": entries}
