@@ -85,3 +85,44 @@ async def test_containers_list_unknown_server_raises(methods) -> None:
     with pytest.raises(ControlError) as exc_info:
         await methods.containers_list(server_id="ghost")
     assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_logs_tail_returns_snapshot(methods, fake_executor) -> None:
+    fake_executor.log_output[("prod-01", "frontend-prd-web")] = "line a\nline b\nline c\n"
+    result = await methods.logs_tail(server_id="prod-01", container="frontend-prd-web", lines=100)
+    assert result["output"] == "line a\nline b\nline c\n"
+    assert result["truncated"] is False
+
+
+async def test_logs_tail_truncates_oversized_output(methods, fake_executor) -> None:
+    big = "x" * (70 * 1024)  # 70 KB
+    fake_executor.log_output[("prod-01", "frontend-prd-web")] = big
+    result = await methods.logs_tail(server_id="prod-01", container="frontend-prd-web", lines=2000)
+    assert len(result["output"].encode()) <= 64 * 1024
+    assert result["truncated"] is True
+    assert result["bytes_dropped"] > 0
+
+
+async def test_logs_tail_clamps_lines(methods, fake_executor) -> None:
+    fake_executor.log_output[("prod-01", "x")] = "ok"
+    result = await methods.logs_tail(server_id="prod-01", container="x", lines=99999)
+    # lines arg has been clamped to 2000 (max); we don't observe directly but the
+    # call must succeed.
+    assert result["output"] == "ok"
+
+
+async def test_logs_tail_unknown_server_raises(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.logs_tail(server_id="ghost", container="x", lines=100)
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_github_versions_returns_list(methods) -> None:
+    result = await methods.github_versions(app_id="frontend", limit=10)
+    assert [v["name"] for v in result] == ["v3.4.0", "v3.3.0"]
+
+
+async def test_github_versions_unknown_app_raises(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.github_versions(app_id="ghost", limit=10)
+    assert exc_info.value.code == ErrorCode.NOT_FOUND

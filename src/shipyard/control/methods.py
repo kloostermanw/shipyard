@@ -30,6 +30,11 @@ class ControlError(Exception):
         return f"[{self.code.name}] {self.message}"
 
 
+_MAX_OUTPUT_BYTES = 64 * 1024
+_MAX_LOG_LINES = 2000
+_MAX_GH_LIMIT = 100
+
+
 class ControlMethods:
     """Bundle of RPC method handlers. Constructed once per running TUI."""
 
@@ -142,3 +147,36 @@ class ControlMethods:
         if server_id not in self._config.servers:
             raise ControlError(ErrorCode.NOT_FOUND, f"Unknown server: {server_id}")
         return list(self._server_container_cache.get(server_id, []))
+
+    # ---- logs ------------------------------------------------------------
+
+    @staticmethod
+    def _cap_trailing(text: str) -> tuple[str, int]:
+        """Keep the last _MAX_OUTPUT_BYTES bytes of text."""
+        encoded = text.encode("utf-8", errors="replace")
+        if len(encoded) <= _MAX_OUTPUT_BYTES:
+            return text, 0
+        dropped = len(encoded) - _MAX_OUTPUT_BYTES
+        truncated = encoded[-_MAX_OUTPUT_BYTES:].decode("utf-8", errors="replace")
+        return truncated, dropped
+
+    async def logs_tail(
+        self, server_id: str, container: str, lines: int = 200
+    ) -> dict[str, Any]:
+        if server_id not in self._config.servers:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown server: {server_id}")
+        lines = max(1, min(lines, _MAX_LOG_LINES))
+        output = await self._executor.docker_logs_tail(server_id, container, lines)
+        capped, dropped = self._cap_trailing(output)
+        return {"output": capped, "truncated": dropped > 0, "bytes_dropped": dropped}
+
+    # ---- github ----------------------------------------------------------
+
+    async def github_versions(
+        self, app_id: str, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        app = self._config.applications.get(app_id)
+        if app is None:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown application: {app_id}")
+        limit = max(1, min(limit, _MAX_GH_LIMIT))
+        return await self._github.get_versions(app.github.repo, limit=limit)
