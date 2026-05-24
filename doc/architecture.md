@@ -200,6 +200,25 @@ Shipyard uses a two-tier caching model for container status data, populated at s
 
 Both caches are populated together in `_fetch_all_container_status()`. As each server completes, a `FetchProgress(completed, total)` message is posted so the `FetchStatusBar` widget can show incremental progress (e.g. "Fetching servers: 2/4"). Once all servers are done and the caches are built, a `ContainerCacheUpdated` message is posted so all active screens can react. The status bar turns green at completion and auto-hides after 2 seconds.
 
+## MCP Server
+
+Shipyard exposes an opt-in [MCP](https://modelcontextprotocol.io/) interface so an LLM client can drive every feature the TUI offers. The MCP layer is split in two:
+
+1. **Control plane (in-TUI).** A `ControlServer` (asyncio Unix socket, newline-delimited JSON-RPC 2.0) runs inside the TUI when `global.mcp.enabled: true`. It binds `~/.config/shipyard/control.sock` (mode 0600) and writes a random per-session token to `~/.config/shipyard/control.token`. Methods are thin wrappers around existing services (`SSHConnectionPool`, `Deployer`, `FileSyncer`, `GitHubClient`, `SecretStore`).
+
+2. **MCP process.** `shipyard mcp` is a separate stdio process spawned by an MCP client. It opens the socket, performs the token handshake, then forwards MCP tool calls to the control plane.
+
+Destructive operations (`execute_deploy`, `execute_sync`) require a one-shot 120 s confirmation token from the corresponding `prepare_*` call. Secret values never leave the TUI except through an explicit `get_secret_value` call. The TUI must be running and the secret store unlocked for secret-related tools to succeed.
+
+See `doc/mcp.md` for the user guide and full tool reference.
+
+```
+┌────────────────┐  stdio   ┌──────────────────┐ Unix sock ┌────────────────┐
+│  MCP client    │ ───────► │   shipyard mcp   │ ────────► │  shipyard TUI  │
+│ (Claude, etc.) │ MCP JSON │ (thin stdio proc)│ JSON-RPC  │ (control plane)│
+└────────────────┘          └──────────────────┘           └────────────────┘
+```
+
 ## Key Design Decisions
 
 1. **AsyncSSH over paramiko**: AsyncSSH integrates natively with Python's asyncio (which Textual uses). Paramiko requires threading workarounds. AsyncSSH also respects `~/.ssh/config` natively.

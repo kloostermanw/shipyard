@@ -97,3 +97,7 @@ shipyard/
 12. screens/ - All 5 screens
 13. app.py - Main app wiring
 14. tests/
+
+## Completed Features
+
+- **MCP Server (opt-in):** Stdio MCP server (`shipyard mcp`) proxying over a local Unix socket to the running TUI. Full feature parity with TUI; prepare/execute confirmation for destructive ops; secrets never unlocked via MCP. See `doc/mcp.md`, `docs/superpowers/specs/2026-05-24-mcp-server-design.md`.

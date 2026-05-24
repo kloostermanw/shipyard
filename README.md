@@ -13,6 +13,10 @@ Each application has a `rerun.sh` script on the target server — Shipyard provi
 - **Log viewer** — stream `docker logs -f` output directly in the terminal
 - **Server overview** — connectivity status, Docker version, and container counts for all servers
 
+## MCP integration (opt-in)
+
+Shipyard can expose all of its features to an MCP client (Claude Code, Claude Desktop, Cursor) via the `shipyard mcp` stdio command. The MCP process talks to your running TUI over a local Unix socket; nothing is exposed to the network. See [`doc/mcp.md`](doc/mcp.md) for setup and security details.
+
 ## Installation
 
 Requires Python 3.11+.

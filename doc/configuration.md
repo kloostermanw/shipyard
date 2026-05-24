@@ -34,9 +34,23 @@ global:
     token_env: "GITHUB_TOKEN"           # Name of env var holding GitHub token
     api_base: "https://api.github.com"  # GitHub API base URL (for GHE)
     polling_interval: 2000              # Workflow status polling interval in ms
+  mcp:
+    enabled: false                                       # default off; opt-in
+    socket_path: "~/.config/shipyard/control.sock"
+    audit_log_path: "~/.config/shipyard/audit.log"
 ```
 
 All fields have sensible defaults. The entire `global` section is optional.
+
+#### `mcp` subsection
+
+When `enabled: true`, Shipyard opens a local Unix domain socket so an MCP client (Claude Code, Claude Desktop, etc.) can drive every TUI feature via the `shipyard mcp` command. See `doc/mcp.md` for the security model and tool reference.
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `enabled` | No | `false` | Whether to start the control plane on TUI launch |
+| `socket_path` | No | `~/.config/shipyard/control.sock` | Unix socket path (mode 0600) |
+| `audit_log_path` | No | `~/.config/shipyard/audit.log` | Append-only JSON-lines audit log (mode 0600, rotated at 5 MB × 5 generations) |
 
 ### `servers` - Server Definitions
 
@@ -156,6 +170,10 @@ global:
   github:
     token_env: "GITHUB_TOKEN"
     polling_interval: 2000
+  mcp:
+    enabled: false                                       # default off; opt-in
+    socket_path: "~/.config/shipyard/control.sock"
+    audit_log_path: "~/.config/shipyard/audit.log"
 
 servers:
   prod-web-01:

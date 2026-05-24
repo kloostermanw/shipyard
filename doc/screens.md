@@ -503,3 +503,7 @@ The bar reacts to `FetchProgress` and `ContainerCacheUpdated` messages posted by
 - Deploy screen uses index-based selection (not widget IDs) for version/environment lists, since version tags can contain dots which are invalid in Textual IDs
 - Servers screen stores column keys from `add_columns()` for use with `update_cell()`, since Textual column keys are objects, not label strings
 - All async operations (SSH connectivity, GitHub API, deploy streaming) run in Textual workers via `run_worker()`
+
+## MCP Server
+
+When `global.mcp.enabled: true`, the TUI also exposes a Unix-socket control plane that powers the optional `shipyard mcp` stdio server. The TUI must be running for any MCP tool call to succeed; the secret store must be unlocked for any secret-related tool. There is no dedicated screen for MCP in the TUI today (an audit-log viewer is planned). See `doc/mcp.md` for the full guide.
