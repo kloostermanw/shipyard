@@ -20,9 +20,16 @@ class GitHubSettings(BaseModel):
     polling_interval: int = 2000  # milliseconds
 
 
+class MCPSettings(BaseModel):
+    enabled: bool = False
+    socket_path: str = "~/.config/shipyard/control.sock"
+    audit_log_path: str = "~/.config/shipyard/audit.log"
+
+
 class GlobalSettings(BaseModel):
     ssh: SSHSettings = SSHSettings()
     github: GitHubSettings = GitHubSettings()
+    mcp: MCPSettings = MCPSettings()
 
 
 class ServerConfig(BaseModel):

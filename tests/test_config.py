@@ -134,3 +134,29 @@ class TestConfigManager:
 
         with pytest.raises(ConfigError, match="reference errors"):
             load_config(str(config_file))
+
+
+def test_mcp_settings_defaults() -> None:
+    """MCPSettings has sensible defaults and is part of GlobalSettings."""
+    from shipyard.config.schema import GlobalSettings, MCPSettings
+
+    g = GlobalSettings()
+    assert isinstance(g.mcp, MCPSettings)
+    assert g.mcp.enabled is False
+    assert g.mcp.socket_path == "~/.config/shipyard/control.sock"
+    assert g.mcp.audit_log_path == "~/.config/shipyard/audit.log"
+
+
+def test_mcp_settings_from_yaml(sample_config_dict: dict) -> None:
+    """MCP block is parsed from the global section."""
+    from shipyard.config.schema import ShipyardConfig
+
+    sample_config_dict["global"]["mcp"] = {
+        "enabled": True,
+        "socket_path": "/tmp/test.sock",
+        "audit_log_path": "/tmp/audit.log",
+    }
+    cfg = ShipyardConfig.model_validate(sample_config_dict)
+    assert cfg.global_.mcp.enabled is True
+    assert cfg.global_.mcp.socket_path == "/tmp/test.sock"
+    assert cfg.global_.mcp.audit_log_path == "/tmp/audit.log"
