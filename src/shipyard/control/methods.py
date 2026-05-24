@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable
 
 from shipyard.config.schema import ApplicationConfig, ShipyardConfig
 from shipyard.control.jobs import JobRegistry
-from shipyard.secrets.store import SecretStore
+from shipyard.secrets.store import SecretStore, SecretStoreError
 
 
 class ErrorCode(IntEnum):
@@ -180,3 +180,37 @@ class ControlMethods:
             raise ControlError(ErrorCode.NOT_FOUND, f"Unknown application: {app_id}")
         limit = max(1, min(limit, _MAX_GH_LIMIT))
         return await self._github.get_versions(app.github.repo, limit=limit)
+
+    # ---- secrets ---------------------------------------------------------
+
+    async def secrets_is_unlocked(self) -> dict[str, bool]:
+        return {"unlocked": self._secret_store.is_unlocked}
+
+    def _require_unlocked(self) -> None:
+        if not self._secret_store.is_unlocked:
+            raise ControlError(ErrorCode.SECRET_STORE_LOCKED, "Secret store is locked")
+
+    async def secrets_list_keys(self) -> list[str]:
+        self._require_unlocked()
+        return self._secret_store.list_keys()
+
+    async def secrets_get(self, key: str) -> dict[str, str]:
+        self._require_unlocked()
+        try:
+            return {"value": self._secret_store.get(key)}
+        except SecretStoreError as exc:
+            raise ControlError(ErrorCode.NOT_FOUND, str(exc))
+
+    async def secrets_set(self, key: str, value: str) -> dict[str, Any]:
+        self._require_unlocked()
+        created = key not in self._secret_store.list_keys()
+        self._secret_store.set(key, value)
+        return {"ok": True, "created": created}
+
+    async def secrets_delete(self, key: str) -> dict[str, bool]:
+        self._require_unlocked()
+        try:
+            self._secret_store.delete(key)
+        except SecretStoreError as exc:
+            raise ControlError(ErrorCode.NOT_FOUND, str(exc))
+        return {"ok": True}

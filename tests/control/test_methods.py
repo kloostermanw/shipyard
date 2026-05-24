@@ -126,3 +126,64 @@ async def test_github_versions_unknown_app_raises(methods) -> None:
     with pytest.raises(ControlError) as exc_info:
         await methods.github_versions(app_id="ghost", limit=10)
     assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_secrets_is_unlocked_when_open(methods) -> None:
+    result = await methods.secrets_is_unlocked()
+    assert result == {"unlocked": True}
+
+
+async def test_secrets_list_keys_returns_sorted(methods) -> None:
+    result = await methods.secrets_list_keys()
+    assert result == ["API_KEY", "DB_PASSWORD"]
+
+
+async def test_secrets_get_returns_value(methods) -> None:
+    result = await methods.secrets_get(key="DB_PASSWORD")
+    assert result == {"value": "supersecret"}
+
+
+async def test_secrets_get_unknown_raises(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.secrets_get(key="MISSING")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_secrets_set_creates_new(methods) -> None:
+    result = await methods.secrets_set(key="NEW_ONE", value="abc")
+    assert result == {"ok": True, "created": True}
+    assert (await methods.secrets_get(key="NEW_ONE")) == {"value": "abc"}
+
+
+async def test_secrets_set_overwrites_existing(methods) -> None:
+    result = await methods.secrets_set(key="DB_PASSWORD", value="newpw")
+    assert result == {"ok": True, "created": False}
+    assert (await methods.secrets_get(key="DB_PASSWORD")) == {"value": "newpw"}
+
+
+async def test_secrets_delete_removes_key(methods) -> None:
+    result = await methods.secrets_delete(key="DB_PASSWORD")
+    assert result == {"ok": True}
+    with pytest.raises(ControlError):
+        await methods.secrets_get(key="DB_PASSWORD")
+
+
+async def test_secrets_delete_unknown_raises(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.secrets_delete(key="MISSING")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_secret_ops_locked_store_raises(locked_secrets, control_deps) -> None:
+    control_deps["secret_store"] = locked_secrets
+    m = ControlMethods(**control_deps)
+    assert (await m.secrets_is_unlocked()) == {"unlocked": False}
+    for coro in (
+        m.secrets_list_keys(),
+        m.secrets_get(key="X"),
+        m.secrets_set(key="X", value="1"),
+        m.secrets_delete(key="X"),
+    ):
+        with pytest.raises(ControlError) as exc_info:
+            await coro
+        assert exc_info.value.code == ErrorCode.SECRET_STORE_LOCKED
