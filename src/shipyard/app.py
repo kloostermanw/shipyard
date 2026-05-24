@@ -75,7 +75,9 @@ class ShipyardApp(App):
         await self._control_server.start()
 
     async def _refresh_for_control(self) -> None:
-        """Wait for an in-flight refresh to complete, then trigger one and wait."""
+        """Run a container-status refresh and block until done. No coordination
+        with the TUI's exclusive refresh worker; concurrent calls just both run.
+        """
         await self._fetch_all_container_status()
 
     async def on_unmount(self) -> None:
@@ -164,8 +166,10 @@ class ShipyardApp(App):
                         })
                 cache.setdefault(app_id, {})[env_id] = containers_data
 
-        self.server_container_cache = server_cache
-        self.container_cache = cache
+        self.server_container_cache.clear()
+        self.server_container_cache.update(server_cache)
+        self.container_cache.clear()
+        self.container_cache.update(cache)
 
         # Notify the active screen of cache update
         screen = self.screen

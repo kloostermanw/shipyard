@@ -368,3 +368,39 @@ async def test_sync_execute_invalid_token(methods) -> None:
     with pytest.raises(ControlError) as exc_info:
         await methods.sync_execute(token="bogus")
     assert exc_info.value.code == ErrorCode.INVALID_CONFIRMATION_TOKEN
+
+
+async def test_apps_get_reflects_cache_mutation(control_deps) -> None:
+    """ControlMethods must see live updates to the container_cache dict (passed by reference)."""
+    m = ControlMethods(**control_deps)
+    before = await m.apps_get(app_id="frontend")
+    prd_env_before = next(e for e in before["environments"] if e["id"] == "prd")
+    statuses_before = {c["name"]: c["status"] for c in prd_env_before["containers"]}
+    assert statuses_before["frontend-prd-web"] == "running"
+
+    # Mutate the cache the way ShipyardApp._fetch_all_container_status should (in-place)
+    cache = control_deps["container_cache"]
+    cache["frontend"]["prd"] = [
+        {"name": "frontend-prd-web", "status": "exited", "image": "myorg/frontend:v3.5", "uptime": "Exited just now"},
+        {"name": "frontend-prd-nginx", "status": "exited", "image": "myorg/frontend:v3.5", "uptime": "Exited just now"},
+    ]
+
+    after = await m.apps_get(app_id="frontend")
+    prd_env = next(e for e in after["environments"] if e["id"] == "prd")
+    statuses = {c["name"]: c["status"] for c in prd_env["containers"]}
+    assert statuses["frontend-prd-web"] == "exited"
+    assert statuses["frontend-prd-nginx"] == "exited"
+
+
+async def test_templates_inspect_rejects_path_traversal(tmp_path, control_deps) -> None:
+    """templates_inspect must reject paths outside the local-path."""
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+    m = ControlMethods(**control_deps)
+    with pytest.raises(ControlError) as exc_info:
+        await m.templates_inspect(
+            app_id="frontend", env_id="prd", path="../../../etc/hosts"
+        )
+    assert exc_info.value.code == ErrorCode.NOT_FOUND

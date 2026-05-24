@@ -374,12 +374,12 @@ class ControlMethods:
         local_path = self._env_local_path(app_id, env_id)
         root = _Path(local_path).expanduser().resolve()
         target = (root / path).resolve()
-        if not target.is_file():
-            raise ControlError(ErrorCode.NOT_FOUND, f"Template not found: {path}")
         try:
             target.relative_to(root)
         except ValueError:
             raise ControlError(ErrorCode.NOT_FOUND, f"Template outside local-path: {path}")
+        if not target.is_file():
+            raise ControlError(ErrorCode.NOT_FOUND, f"Template not found: {path}")
         text = target.read_text(encoding="utf-8", errors="replace")
 
         known_keys = (
