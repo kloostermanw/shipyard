@@ -41,6 +41,16 @@ class DeployResult:
     completed_at: datetime
 
 
+@dataclass
+class DeployRunResult:
+    """Aggregated result for block-and-return callers (MCP control plane)."""
+
+    success: bool
+    exit_code: int
+    stdout: str
+    stderr: str
+
+
 class Deployer:
     """Executes deployments by running rerun.sh on remote servers.
 
@@ -118,3 +128,30 @@ class Deployer:
                 status=DeployStatus.FAILED,
                 message=f"Deploy error: {exc}",
             )
+
+    async def run_to_completion(
+        self,
+        app_id: str,
+        env_id: str,
+        version: str,
+        env_config: EnvironmentConfig,
+    ) -> "DeployRunResult":
+        """Run a deploy to completion, collecting all output.
+
+        Used by the control plane for block-and-return MCP semantics.
+        """
+        stdout_lines: list[str] = []
+        final_status = DeployStatus.PENDING
+        async for event in self.deploy(app_id, env_id, version, env_config):
+            if event.status == DeployStatus.RUNNING:
+                stdout_lines.append(event.message)
+            else:
+                final_status = event.status
+                stdout_lines.append(event.message)
+        success = final_status == DeployStatus.SUCCESS
+        return DeployRunResult(
+            success=success,
+            exit_code=0 if success else 1,
+            stdout="\n".join(stdout_lines) + "\n",
+            stderr="",
+        )

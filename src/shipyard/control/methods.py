@@ -9,7 +9,7 @@ from pathlib import Path as _Path
 from typing import Any, Awaitable, Callable
 
 from shipyard.config.schema import ApplicationConfig, ShipyardConfig
-from shipyard.control.jobs import JobRegistry
+from shipyard.control.jobs import JobNotFoundError, JobRegistry
 from shipyard.secrets.store import SecretStore, SecretStoreError
 
 
@@ -285,6 +285,88 @@ class ControlMethods:
                 }
             )
         return result
+
+    # ---- deploy ----------------------------------------------------------
+
+    def _current_versions_for_env(
+        self, app_id: str, env_id: str
+    ) -> list[str]:
+        env_cache = self._container_cache.get(app_id, {}).get(env_id, [])
+        return [c.get("image", "") for c in env_cache]
+
+    @staticmethod
+    def _cap_leading(text: str) -> tuple[str, int]:
+        """Keep the LAST _MAX_OUTPUT_BYTES bytes (drop the beginning)."""
+        encoded = text.encode("utf-8", errors="replace")
+        if len(encoded) <= _MAX_OUTPUT_BYTES:
+            return text, 0
+        dropped = len(encoded) - _MAX_OUTPUT_BYTES
+        kept = encoded[-_MAX_OUTPUT_BYTES:].decode("utf-8", errors="replace")
+        return kept, dropped
+
+    async def deploy_prepare(
+        self, app_id: str, env_id: str, version: str
+    ) -> dict[str, Any]:
+        app = self._config.applications.get(app_id)
+        if app is None:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown application: {app_id}")
+        env = app.environments.get(env_id)
+        if env is None:
+            raise ControlError(
+                ErrorCode.NOT_FOUND, f"Unknown environment: {app_id}/{env_id}"
+            )
+        summary = {
+            "app_id": app_id,
+            "env_id": env_id,
+            "server": env.server,
+            "path": env.path,
+            "version": version,
+            "containers": list(env.containers),
+            "current_versions": self._current_versions_for_env(app_id, env_id),
+        }
+        token = self._jobs.create(
+            kind="deploy",
+            params={
+                "app_id": app_id,
+                "env_id": env_id,
+                "version": version,
+            },
+        )
+        return {"token": token, "summary": summary}
+
+    async def deploy_execute(self, token: str) -> dict[str, Any]:
+        try:
+            job = self._jobs.consume(token)
+        except JobNotFoundError:
+            raise ControlError(
+                ErrorCode.INVALID_CONFIRMATION_TOKEN,
+                "Confirmation token is unknown, expired, or already used",
+            )
+        if job.kind != "deploy":
+            raise ControlError(
+                ErrorCode.INVALID_CONFIRMATION_TOKEN,
+                "Token is not for a deploy",
+            )
+
+        app_id = job.params["app_id"]
+        env_id = job.params["env_id"]
+        version = job.params["version"]
+        env_config = self._config.applications[app_id].environments[env_id]
+
+        result = await self._deployer.run_to_completion(
+            app_id, env_id, version, env_config
+        )
+        combined = (result.stdout or "") + (result.stderr or "")
+        capped, dropped = self._cap_leading(combined)
+        return {
+            "success": result.success,
+            "exit_code": result.exit_code,
+            "output": capped,
+            "truncated": dropped > 0,
+            "bytes_dropped": dropped,
+        }
+
+    # ---- templates -------------------------------------------------------
 
     async def templates_inspect(
         self, app_id: str, env_id: str, path: str

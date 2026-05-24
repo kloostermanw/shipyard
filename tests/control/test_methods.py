@@ -261,3 +261,51 @@ async def test_templates_inspect_unknown_path_raises(tmp_path, control_deps) -> 
     with pytest.raises(ControlError) as exc_info:
         await m.templates_inspect(app_id="frontend", env_id="prd", path="nothere.j2")
     assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_deploy_prepare_returns_token_and_summary(methods) -> None:
+    result = await methods.deploy_prepare(app_id="frontend", env_id="prd", version="v3.4.0")
+    assert "token" in result
+    summary = result["summary"]
+    assert summary["server"] == "prod-01"
+    assert summary["path"] == "/opt/apps/frontend"
+    assert summary["version"] == "v3.4.0"
+    assert summary["containers"] == ["frontend-prd-web", "frontend-prd-nginx"]
+    assert summary["current_versions"] == ["myorg/frontend:v3.2", "myorg/frontend:v3.2"]
+
+
+async def test_deploy_prepare_unknown_env_raises(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.deploy_prepare(app_id="frontend", env_id="nope", version="v1")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_deploy_execute_runs_deployer(methods, fake_deployer) -> None:
+    prepare = await methods.deploy_prepare(app_id="frontend", env_id="prd", version="v3.4.0")
+    result = await methods.deploy_execute(token=prepare["token"])
+    assert result["success"] is True
+    assert result["exit_code"] == 0
+    assert fake_deployer.calls == [("frontend", "prd", "v3.4.0")]
+
+
+async def test_deploy_execute_invalid_token(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.deploy_execute(token="bogus")
+    assert exc_info.value.code == ErrorCode.INVALID_CONFIRMATION_TOKEN
+
+
+async def test_deploy_execute_single_use(methods) -> None:
+    prepare = await methods.deploy_prepare(app_id="frontend", env_id="prd", version="v3.4.0")
+    await methods.deploy_execute(token=prepare["token"])
+    with pytest.raises(ControlError) as exc_info:
+        await methods.deploy_execute(token=prepare["token"])
+    assert exc_info.value.code == ErrorCode.INVALID_CONFIRMATION_TOKEN
+
+
+async def test_deploy_execute_truncates_oversized_output(methods, fake_deployer) -> None:
+    fake_deployer.next_result.stdout = "x" * (70 * 1024)
+    prepare = await methods.deploy_prepare(app_id="frontend", env_id="prd", version="v3.4.0")
+    result = await methods.deploy_execute(token=prepare["token"])
+    assert result["truncated"] is True
+    assert result["bytes_dropped"] > 0
+    assert len(result["output"].encode()) <= 64 * 1024
