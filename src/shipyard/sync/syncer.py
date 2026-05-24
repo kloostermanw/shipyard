@@ -49,6 +49,16 @@ class SyncCheckResult:
 
 
 @dataclass
+class SyncRunResult:
+    """Aggregated sync result for block-and-return callers (MCP control plane)."""
+
+    success: bool
+    transferred: list[str]
+    skipped: list[str]
+    error: str = ""
+
+
+@dataclass
 class SyncEvent:
     status: SyncStatus
     message: str
@@ -374,3 +384,52 @@ class FileSyncer:
                 status=SyncStatus.ERROR,
                 message=f"Sync failed: {exc}",
             )
+
+    async def scan_for_prepare(
+        self, server_id: str, local_path: str, remote_path: str
+    ) -> dict[str, list[str]]:
+        """Dry-run scan: compute planned uploads and detected template files.
+
+        Used by the MCP control plane to populate sync_prepare summaries.
+        """
+        template_files: list[str] = []
+        root = Path(local_path).expanduser().resolve()
+        if root.is_dir():
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                for f in filenames:
+                    if f.endswith(".j2") and not f.startswith("."):
+                        rel = str((Path(dirpath) / f).relative_to(root))
+                        template_files.append(rel)
+
+        # If templates are present but secrets are locked, return marker only.
+        if template_files and not self._can_process_templates():
+            return {"planned_uploads": [], "template_files": template_files}
+
+        check = await self.check_sync_status(server_id, local_path, remote_path)
+        planned = sorted(set(check.files_out_of_sync + check.files_missing_remote))
+        return {"planned_uploads": planned, "template_files": template_files}
+
+    async def run_to_completion(
+        self, server_id: str, local_path: str, remote_path: str
+    ) -> "SyncRunResult":
+        """Run sync to completion, collecting result. Used by MCP control plane."""
+        transferred: list[str] = []
+        last_status = SyncStatus.UNKNOWN
+        last_message = ""
+        async for event in self.sync(server_id, local_path, remote_path):
+            last_status = event.status
+            last_message = event.message
+            if event.status == SyncStatus.SYNCING and event.message.startswith("Uploading: "):
+                # Extract filename (strip the "Uploading: " prefix and any trailing " (template)")
+                name = event.message[len("Uploading: "):]
+                if name.endswith(" (template)"):
+                    name = name[: -len(" (template)")]
+                transferred.append(name)
+        success = last_status == SyncStatus.IN_SYNC
+        return SyncRunResult(
+            success=success,
+            transferred=transferred,
+            skipped=[],
+            error="" if success else last_message,
+        )

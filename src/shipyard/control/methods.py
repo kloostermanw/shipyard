@@ -413,3 +413,62 @@ class ControlMethods:
                 # Plain literal value; mask, never include the literal in output.
                 entries.append({"key": key, "resolution": "PLAIN"})
         return {"path": path, "entries": entries}
+
+    # ---- sync ------------------------------------------------------------
+
+    async def sync_prepare(self, app_id: str, env_id: str) -> dict[str, Any]:
+        local_path = self._env_local_path(app_id, env_id)
+        env = self._config.applications[app_id].environments[env_id]
+        scan = await self._syncer.scan_for_prepare(
+            env.server, local_path, env.path
+        )
+        if scan["template_files"] and not self._secret_store.is_unlocked:
+            raise ControlError(
+                ErrorCode.SECRET_STORE_LOCKED,
+                "Secret store is locked but .j2 templates exist; unlock via the TUI first",
+            )
+        summary = {
+            "app_id": app_id,
+            "env_id": env_id,
+            "server": env.server,
+            "local_path": local_path,
+            "remote_path": env.path,
+            "planned_uploads": scan["planned_uploads"],
+            "template_files": scan["template_files"],
+        }
+        token = self._jobs.create(
+            kind="sync",
+            params={
+                "app_id": app_id,
+                "env_id": env_id,
+                "server_id": env.server,
+                "local_path": local_path,
+                "remote_path": env.path,
+            },
+        )
+        return {"token": token, "summary": summary}
+
+    async def sync_execute(self, token: str) -> dict[str, Any]:
+        try:
+            job = self._jobs.consume(token)
+        except JobNotFoundError:
+            raise ControlError(
+                ErrorCode.INVALID_CONFIRMATION_TOKEN,
+                "Confirmation token is unknown, expired, or already used",
+            )
+        if job.kind != "sync":
+            raise ControlError(
+                ErrorCode.INVALID_CONFIRMATION_TOKEN, "Token is not for a sync"
+            )
+
+        result = await self._syncer.run_to_completion(
+            job.params["server_id"],
+            job.params["local_path"],
+            job.params["remote_path"],
+        )
+        return {
+            "success": result.success,
+            "transferred": result.transferred,
+            "skipped": result.skipped,
+            "error": result.error,
+        }

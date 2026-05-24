@@ -309,3 +309,62 @@ async def test_deploy_execute_truncates_oversized_output(methods, fake_deployer)
     assert result["truncated"] is True
     assert result["bytes_dropped"] > 0
     assert len(result["output"].encode()) <= 64 * 1024
+
+
+async def test_sync_prepare_returns_token_and_summary(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+    control_deps["syncer"].planned_uploads = ["a.txt", "b.txt"]
+    m = ControlMethods(**control_deps)
+
+    result = await m.sync_prepare(app_id="frontend", env_id="prd")
+    assert "token" in result
+    summary = result["summary"]
+    assert summary["server"] == "prod-01"
+    assert summary["local_path"] == str(local)
+    assert summary["remote_path"] == "/opt/apps/frontend"
+    assert summary["planned_uploads"] == ["a.txt", "b.txt"]
+    assert summary["template_files"] == []
+
+
+async def test_sync_prepare_locked_with_templates_errors(tmp_path, control_deps, locked_secrets) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+    control_deps["syncer"].template_files = ["env.j2"]
+    control_deps["secret_store"] = locked_secrets
+    m = ControlMethods(**control_deps)
+
+    with pytest.raises(ControlError) as exc_info:
+        await m.sync_prepare(app_id="frontend", env_id="prd")
+    assert exc_info.value.code == ErrorCode.SECRET_STORE_LOCKED
+
+
+async def test_sync_prepare_no_local_path_raises(control_deps) -> None:
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = None
+    m = ControlMethods(**control_deps)
+    with pytest.raises(ControlError) as exc_info:
+        await m.sync_prepare(app_id="frontend", env_id="prd")
+    assert exc_info.value.code == ErrorCode.NOT_FOUND
+
+
+async def test_sync_execute_runs_syncer(tmp_path, control_deps) -> None:
+    local = tmp_path / "frontend-local"
+    local.mkdir()
+    cfg = control_deps["config"]
+    cfg.applications["frontend"].environments["prd"].local_path = str(local)
+    m = ControlMethods(**control_deps)
+    prepare = await m.sync_prepare(app_id="frontend", env_id="prd")
+    result = await m.sync_execute(token=prepare["token"])
+    assert result["success"] is True
+    assert result["transferred"] == ["docker-compose.yml"]
+
+
+async def test_sync_execute_invalid_token(methods) -> None:
+    with pytest.raises(ControlError) as exc_info:
+        await methods.sync_execute(token="bogus")
+    assert exc_info.value.code == ErrorCode.INVALID_CONFIRMATION_TOKEN
