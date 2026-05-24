@@ -103,3 +103,42 @@ class ControlMethods:
             )
         await self._refresh_status_callback()
         return {"ok": True}
+
+    # ---- servers ---------------------------------------------------------
+
+    async def servers_list(self) -> list[dict[str, Any]]:
+        result = []
+        for sid, server in self._config.servers.items():
+            result.append(
+                {
+                    "id": sid,
+                    "hostname": server.hostname,
+                    "port": server.port,
+                    "user": server.user or self._config.global_.ssh.default_user,
+                    "description": server.description,
+                }
+            )
+        return result
+
+    async def servers_get(self, server_id: str) -> dict[str, Any]:
+        server = self._config.servers.get(server_id)
+        if server is None:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown server: {server_id}")
+        reachable = await self._ssh_pool.check_connection(server_id)
+        containers = list(self._server_container_cache.get(server_id, []))
+        return {
+            "id": server_id,
+            "hostname": server.hostname,
+            "port": server.port,
+            "user": server.user or self._config.global_.ssh.default_user,
+            "description": server.description,
+            "reachable": reachable,
+            "containers": containers,
+        }
+
+    # ---- containers ------------------------------------------------------
+
+    async def containers_list(self, server_id: str) -> list[dict[str, str]]:
+        if server_id not in self._config.servers:
+            raise ControlError(ErrorCode.NOT_FOUND, f"Unknown server: {server_id}")
+        return list(self._server_container_cache.get(server_id, []))
