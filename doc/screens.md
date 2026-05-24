@@ -366,7 +366,7 @@ Shows a password input to unlock the store. On successful unlock, the screen reb
 
 ### Unlocked State
 
-Shows a DataTable of all secrets (values masked as `********`).
+Shows a DataTable of all secrets. Values are masked as `********` by default; press `r` on a row to toggle revealing the cleartext value (toggle again to hide). Reveal state resets when the screen is left.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -385,13 +385,14 @@ Shows a DataTable of all secrets (values masked as `********`).
 │  └──────────────────────────────┴──────────────────────────────────────────┘│
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ a Add  e Edit  x Delete  escape Back                                        │
+│ a Add  e Edit  r Reveal  x Delete  escape Back                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Key bindings (all `priority=True`):
 - `a` — Add new secret (opens SecretInputModal)
 - `e` — Edit selected secret (opens SecretInputModal pre-filled)
+- `r` — Toggle reveal/mask of the selected row's value
 - `x` — Delete selected secret
 - `escape` — Back to Dashboard
 

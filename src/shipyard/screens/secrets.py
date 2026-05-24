@@ -64,9 +64,14 @@ class SecretsScreen(Screen):
     BINDINGS = [
         Binding("a", "add_secret", "Add", priority=True),
         Binding("e", "edit_secret", "Edit", priority=True),
+        Binding("r", "reveal_secret", "Reveal", priority=True),
         Binding("x", "delete_secret", "Delete", priority=True),
         Binding("escape", "go_back", "Back", priority=True),
     ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._revealed: set[str] = set()
 
     def compose(self) -> ComposeResult:
         store = self.app.secret_store
@@ -101,8 +106,15 @@ class SecretsScreen(Screen):
         table = self.query_one("#secrets-table", DataTable)
         table.clear(columns=True)
         table.add_columns("Key", "Value")
-        for key in store.list_keys():
-            table.add_row(key, "********", key=key)
+        keys = store.list_keys()
+        # Drop any stale entries (e.g. after a delete) from the reveal set
+        self._revealed &= set(keys)
+        for key in keys:
+            if key in self._revealed:
+                display = store.get(key)
+            else:
+                display = "********"
+            table.add_row(key, display, key=key)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "password-input":
@@ -157,6 +169,21 @@ class SecretsScreen(Screen):
         key, value = result
         store = self.app.secret_store
         store.set(key, value)
+        self._populate_table()
+
+    def action_reveal_secret(self) -> None:
+        store = self.app.secret_store
+        if not store.is_unlocked:
+            return
+        table = self.query_one("#secrets-table", DataTable)
+        if table.row_count == 0:
+            return
+        row_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key
+        key = str(row_key.value)
+        if key in self._revealed:
+            self._revealed.discard(key)
+        else:
+            self._revealed.add(key)
         self._populate_table()
 
     def action_delete_secret(self) -> None:
