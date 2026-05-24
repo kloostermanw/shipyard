@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pytest
 
 from shipyard.config.schema import (
@@ -267,3 +270,14 @@ def control_deps(
         "container_cache": container_cache,
         "server_container_cache": server_container_cache,
     }
+
+
+@pytest.fixture
+def short_tmp(tmp_path) -> Path:
+    """Return a tmp dir with a path short enough for AF_UNIX (104-char limit on macOS)."""
+    p = str(tmp_path)
+    if len(p) + len("/control.sock") > 100:
+        # Fall back to a short path under /tmp
+        d = Path(tempfile.mkdtemp(prefix="sy_", dir="/tmp"))
+        return d
+    return tmp_path
