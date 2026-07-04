@@ -72,6 +72,9 @@ applications:
         containers:
           - "api-prd-web"
           - "api-prd-worker"
+        workflow_filter:
+          - "Build and Deploy"
+          - "Run Tests"
       uat:
         server: "uat-01"
         path: "/opt/apps/api-service"

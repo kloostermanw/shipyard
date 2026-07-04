@@ -109,6 +109,7 @@ Each environment maps to a specific server, a path on that server, and the Docke
 | `path` | Yes | - | Absolute path to the config folder containing `rerun.sh` |
 | `containers` | No | `[]` | List of Docker container names (as shown in `docker ps`) |
 | `local-path` | No | `null` | Local directory path to sync to the remote `path` via SFTP. Must be absolute or start with `~`. When set, enables one-way file sync (local → remote) on the Application screen. |
+| `workflow_filter` | No | `[]` | List of strings. Exact names of GitHub Actions workflows to show in the deploy screen's running-workflows panel for this environment. When empty or omitted, all running/queued workflows are shown. Also accepted as `workflow-filter`. |
 
 ## Secrets File
 

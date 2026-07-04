@@ -79,7 +79,7 @@ Key bindings (all `priority=True`):
 
 ## 3. Deploy Screen - Version Selection
 
-Select an environment (left) and a version from GitHub tags/releases (right). Versions are fetched asynchronously on mount. If there are active GitHub Actions workflow runs, they are displayed above the selection lists and auto-refresh at the configured `polling_interval` (default 2s).
+Select an environment (left) and a version from GitHub tags/releases (right). Versions are fetched asynchronously on mount. If there are active GitHub Actions workflow runs, they are displayed above the selection lists and auto-refresh at the configured `polling_interval` (default 2s). The running-workflows panel shows in-progress runs with an animated Braille spinner and queued runs with a static `○`. The list is filtered to the highlighted environment's `workflow_filter` when one is configured, otherwise all runs are shown.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
