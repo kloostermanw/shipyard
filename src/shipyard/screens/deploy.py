@@ -10,8 +10,21 @@ from textual.timer import Timer
 from textual.widgets import Button, Footer, Header, ListView, ListItem, Label, Static
 
 from shipyard.deploy.deployer import DeployStatus
+from shipyard.github.client import WorkflowRun
 from shipyard.widgets.deploy_progress import DeployProgress
 from shipyard.widgets.fetch_status_bar import FetchStatusBar
+
+SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+def filter_workflow_runs(
+    runs: list[WorkflowRun], filter_names: list[str]
+) -> list[WorkflowRun]:
+    """Return runs whose name is in filter_names. Empty filter returns all runs."""
+    if not filter_names:
+        return list(runs)
+    allowed = set(filter_names)
+    return [r for r in runs if r.name in allowed]
 
 
 class DeployConfirmModal(ModalScreen[bool]):
