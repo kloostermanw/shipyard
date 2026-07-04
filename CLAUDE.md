@@ -1,5 +1,9 @@
 # Shipyard - Docker Deployment TUI
 
+## General
+Do not tell me I am right all the time. Be critical. We're equals. Try to be neutral and objective.
+Do not excessively use emojis.
+
 ## What is this?
 
 A terminal TUI application (Python/Textual) for deploying Docker applications to remote servers via SSH. Each application has a `rerun.sh` script on the server -- this tool provides a visual interface to trigger deploys, monitor container status, and view logs.
@@ -77,6 +81,20 @@ Lookup order: `--config` flag > `./shipyard.yaml` > `~/.config/shipyard/config.y
 - **Screen stack**: Navigation uses `push_screen()` / `pop_screen()`
 - **Pydantic validation**: Config is validated on load, cross-references checked
 - **SSH connection pooling**: Connections are lazily created and reused
+
+## Using GitHub
+For questions about GitHub, use the gh tool Never mention Claude Code in PR descriptions, PR comments, or issue comments Do not include a "Test plan" section in PR descriptions
+
+## Git
+use /create-commit to create a commit message
+use /create-pr to create a pr message
+
+## If you run inside Solo (The environment confirms then TERM_PROGRAM=solo)
+use the solo mcp
+do not use the docs/superpowers/ to write documents put them in solo TODO or SCRATCHPADS
+this means design docs, specs and brainstorming output go into a Solo scratchpad via the solo mcp (mcp__solo__scratchpad_write), NOT the local filesystem scratchpad dir and NOT the repo
+Use mcp__solo__whoami it returns the project your in.
+mcp__solo__list_processes — it lists the process entries in the current project scope
 
 ## Testing
 
