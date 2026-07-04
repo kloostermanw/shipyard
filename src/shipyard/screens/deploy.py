@@ -69,6 +69,9 @@ class DeployScreen(Screen):
         self._env_ids: list[str] = []
         self._version_names: list[str] = []
         self._workflow_timer: Timer | None = None
+        self._workflow_runs: list[WorkflowRun] = []
+        self._spinner_frame = 0
+        self._spinner_timer: Timer | None = None
 
     def compose(self) -> ComposeResult:
         config = self.app.shipyard_config
@@ -101,6 +104,7 @@ class DeployScreen(Screen):
         self._workflow_timer = self.set_interval(
             interval_ms / 1000, self._poll_workflow_runs
         )
+        self._spinner_timer = self.set_interval(0.1, self._tick_spinner)
 
     def _load_versions(self) -> None:
         self.run_worker(self._fetch_versions(), exclusive=True)
@@ -147,18 +151,39 @@ class DeployScreen(Screen):
         runs += await github_client.get_workflow_runs(
             app_config.github.repo, status="queued"
         )
+        self._workflow_runs = runs
+        self._render_workflow_runs()
 
-        panel = self.query_one("#workflow-runs", Static)
-        if runs:
-            lines = ["[bold yellow]GitHub Actions running:[/]"]
-            for run in runs:
-                icon = "\u25cb" if run.status == "queued" else "\u25cf"
-                lines.append(f"  {icon} {run.name} [{run.status}]")
-            panel.update("\n".join(lines))
-            panel.display = True
-        else:
+    def _current_filter(self) -> list[str]:
+        if not self._selected_env:
+            return []
+        app_config = self.app.shipyard_config.applications[self.app_id]
+        env_config = app_config.environments.get(self._selected_env)
+        return env_config.workflow_filter if env_config else []
+
+    def _render_workflow_runs(self) -> None:
+        try:
+            panel = self.query_one("#workflow-runs", Static)
+        except Exception:
+            return
+
+        runs = filter_workflow_runs(self._workflow_runs, self._current_filter())
+        if not runs:
             panel.update("[dim]No active workflows[/]")
             panel.display = True
+            return
+
+        spinner = SPINNER_FRAMES[self._spinner_frame % len(SPINNER_FRAMES)]
+        lines = ["[bold yellow]GitHub Actions running:[/]"]
+        for run in runs:
+            icon = "\u25cb" if run.status == "queued" else spinner
+            lines.append(f"  {icon} {run.name} [{run.status}]")
+        panel.update("\n".join(lines))
+        panel.display = True
+
+    def _tick_spinner(self) -> None:
+        self._spinner_frame += 1
+        self._render_workflow_runs()
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         """Track environment selection when the cursor moves."""
@@ -166,6 +191,7 @@ class DeployScreen(Screen):
             idx = event.list_view.index
             if idx is not None and idx < len(self._env_ids):
                 self._selected_env = self._env_ids[idx]
+                self._render_workflow_runs()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         list_view = event.list_view
@@ -214,6 +240,8 @@ class DeployScreen(Screen):
         self._deploying = True
         if self._workflow_timer:
             self._workflow_timer.stop()
+        if self._spinner_timer:
+            self._spinner_timer.stop()
         # Show progress, hide selection
         self.query_one("#workflow-runs").display = False
         self.query_one("#version-selection").display = False
@@ -244,3 +272,9 @@ class DeployScreen(Screen):
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
+
+    def on_unmount(self) -> None:
+        if self._workflow_timer:
+            self._workflow_timer.stop()
+        if self._spinner_timer:
+            self._spinner_timer.stop()
