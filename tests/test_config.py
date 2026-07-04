@@ -73,6 +73,22 @@ class TestSchema:
         with pytest.raises(ValidationError):
             GitHubRepoConfig(repo="org/repo", track="branches")
 
+    def test_workflow_filter_defaults_empty(self) -> None:
+        env = EnvironmentConfig(server="s1", path="/opt/app")
+        assert env.workflow_filter == []
+
+    def test_workflow_filter_underscore_key(self) -> None:
+        env = EnvironmentConfig.model_validate(
+            {"server": "s1", "path": "/opt/app", "workflow_filter": ["Build and Deploy"]}
+        )
+        assert env.workflow_filter == ["Build and Deploy"]
+
+    def test_workflow_filter_kebab_key(self) -> None:
+        env = EnvironmentConfig.model_validate(
+            {"server": "s1", "path": "/opt/app", "workflow-filter": ["Run Tests"]}
+        )
+        assert env.workflow_filter == ["Run Tests"]
+
 
 class TestCrossReferences:
     """Tests for cross-reference validation."""

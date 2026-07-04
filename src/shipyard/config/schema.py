@@ -60,6 +60,7 @@ class EnvironmentConfig(BaseModel):
     path: str
     containers: list[str] = []
     local_path: str | None = Field(default=None, alias="local-path")
+    workflow_filter: list[str] = Field(default_factory=list, alias="workflow-filter")
 
     model_config = {"populate_by_name": True}
 
