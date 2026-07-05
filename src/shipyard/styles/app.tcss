@@ -108,13 +108,20 @@ EnvironmentPanel {
 #env-list {
     width: 25;
     height: 100%;
-    border: solid $primary;
+    border: solid $primary-darken-2;
     margin-right: 1;
 }
 
 #version-list {
     width: 1fr;
     height: 100%;
+    border: solid $primary-darken-2;
+}
+
+/* Brighten the border of whichever list box currently has focus so the
+   active box stands out from the darker, inactive one. */
+#env-list:focus,
+#version-list:focus {
     border: solid $primary;
 }
 
